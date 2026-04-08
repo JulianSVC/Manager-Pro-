@@ -1,18 +1,17 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
+const Database = require('better-sqlite3');
 
 const app = express();
 app.use(bodyParser.json());
 
 // ==================== SISTEMA DE LICENCIAS ====================
 const LICENCIA_SECRETA = 'MANAGER_PRO_2024_CLAVE_SECRETA';
-// Usar la carpeta del usuario para guardar la licencia
 const LICENCIA_FILE = path.join(process.cwd(), 'license.key');
 
 function getHardwareId() {
@@ -21,11 +20,9 @@ function getHardwareId() {
         const networkInterfaces = os.networkInterfaces();
         
         let macAddress = 'NO-MAC';
-        const interfaces = networkInterfaces;
-        
-        for (let iface in interfaces) {
-            if (interfaces[iface] && interfaces[iface][0] && interfaces[iface][0].mac) {
-                macAddress = interfaces[iface][0].mac;
+        for (let iface in networkInterfaces) {
+            if (networkInterfaces[iface] && networkInterfaces[iface][0] && networkInterfaces[iface][0].mac) {
+                macAddress = networkInterfaces[iface][0].mac;
                 break;
             }
         }
@@ -52,21 +49,12 @@ function validarLicencia() {
         if (!fs.existsSync(LICENCIA_FILE)) {
             return { valida: false, mensaje: 'Archivo de licencia no encontrado' };
         }
-
         const licenciaGuardada = fs.readFileSync(LICENCIA_FILE, 'utf8').trim();
         const hardwareId = getHardwareId();
-        
         if (!hardwareId) {
             return { valida: false, mensaje: 'No se pudo identificar el hardware' };
         }
-
-        const licenciaEsperada = crypto
-            .createHash('sha256')
-            .update(LICENCIA_SECRETA + '_' + hardwareId)
-            .digest('hex')
-            .substring(0, 20)
-            .toUpperCase();
-
+        const licenciaEsperada = crypto.createHash('sha256').update(LICENCIA_SECRETA + '_' + hardwareId).digest('hex').substring(0, 20).toUpperCase();
         return { 
             valida: licenciaGuardada === licenciaEsperada,
             mensaje: licenciaGuardada === licenciaEsperada ? 'Licencia válida' : 'Licencia no válida para este equipo'
@@ -79,23 +67,10 @@ function validarLicencia() {
 // Endpoints públicos
 app.post('/api/activar', express.json(), (req, res) => {
     const { licencia } = req.body;
-    
-    if (!licencia) {
-        return res.status(400).json({ error: 'Licencia requerida' });
-    }
-
+    if (!licencia) return res.status(400).json({ error: 'Licencia requerida' });
     const hardwareId = getHardwareId();
-    if (!hardwareId) {
-        return res.status(500).json({ error: 'Error identificando hardware' });
-    }
-
-    const licenciaEsperada = crypto
-        .createHash('sha256')
-        .update(LICENCIA_SECRETA + '_' + hardwareId)
-        .digest('hex')
-        .substring(0, 20)
-        .toUpperCase();
-
+    if (!hardwareId) return res.status(500).json({ error: 'Error identificando hardware' });
+    const licenciaEsperada = crypto.createHash('sha256').update(LICENCIA_SECRETA + '_' + hardwareId).digest('hex').substring(0, 20).toUpperCase();
     if (licencia === licenciaEsperada) {
         fs.writeFileSync(LICENCIA_FILE, licencia);
         res.json({ activado: true, mensaje: 'Software activado correctamente' });
@@ -106,41 +81,19 @@ app.post('/api/activar', express.json(), (req, res) => {
 
 app.get('/api/hardware-id', (req, res) => {
     const hwid = getHardwareId();
-    if (hwid) {
-        res.json({ hardware_id: hwid });
-    } else {
-        res.status(500).json({ error: 'No se pudo obtener HWID' });
-    }
+    hwid ? res.json({ hardware_id: hwid }) : res.status(500).json({ error: 'No se pudo obtener HWID' });
 });
 
 app.get('/api/verificar-licencia', (req, res) => {
-    const resultado = validarLicencia();
-    res.json(resultado);
+    res.json(validarLicencia());
 });
 
 app.post('/api/generar-licencia-para-cliente', (req, res) => {
     const { clave_secreta, hardware_id_cliente } = req.body;
-    
-    if (clave_secreta !== 'ADMIN_2024') {
-        return res.status(401).json({ error: 'No autorizado' });
-    }
-    
-    if (!hardware_id_cliente) {
-        return res.status(400).json({ error: 'Hardware ID del cliente requerido' });
-    }
-    
-    const licencia = crypto
-        .createHash('sha256')
-        .update(LICENCIA_SECRETA + '_' + hardware_id_cliente)
-        .digest('hex')
-        .substring(0, 20)
-        .toUpperCase();
-    
-    res.json({ 
-        licencia,
-        hardware_id: hardware_id_cliente,
-        mensaje: 'Licencia generada correctamente'
-    });
+    if (clave_secreta !== 'ADMIN_2024') return res.status(401).json({ error: 'No autorizado' });
+    if (!hardware_id_cliente) return res.status(400).json({ error: 'Hardware ID del cliente requerido' });
+    const licencia = crypto.createHash('sha256').update(LICENCIA_SECRETA + '_' + hardware_id_cliente).digest('hex').substring(0, 20).toUpperCase();
+    res.json({ licencia, hardware_id: hardware_id_cliente, mensaje: 'Licencia generada correctamente' });
 });
 
 // ==================== VERIFICACIÓN DE LICENCIA ====================
@@ -155,270 +108,57 @@ if (!licenciaValida.valida) {
     console.log('📧 Email: ventas@managerpro.co\n');
     
     app.use(express.static(path.join(__dirname, 'public')));
-    
     app.use((req, res, next) => {
-        const rutasPermitidas = [
-            '/activar.html',
-            '/favicon.ico',
-            '/api/hardware-id',
-            '/api/activar',
-            '/api/verificar-licencia',
-            '/api/generar-licencia-para-cliente'
-        ];
-        
-        if (rutasPermitidas.includes(req.path) || req.path.startsWith('/api/')) {
-            return next();
-        }
-        
+        const rutasPermitidas = ['/activar.html', '/favicon.ico', '/api/hardware-id', '/api/activar', '/api/verificar-licencia', '/api/generar-licencia-para-cliente'];
+        if (rutasPermitidas.includes(req.path) || req.path.startsWith('/api/')) return next();
         res.sendFile(path.join(__dirname, 'public', 'activar.html'));
     });
-
 } else {
     console.log('✅ Licencia válida - Software activado');
-    
     app.use(express.static(path.join(__dirname, 'public')));
     
-// Guardar DB en la carpeta actual de trabajo
-const db = new sqlite3.Database(path.join(process.cwd(), 'manager.db'));
-
-    db.serialize(() => {
-        db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            user TEXT UNIQUE, 
-            pass TEXT
-        )`);
-        
-        db.run(`CREATE TABLE IF NOT EXISTS clientes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            nombre TEXT
-        )`);
-        
-        db.run(`CREATE TABLE IF NOT EXISTS productos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            nombre TEXT, 
-            precio_base REAL,
-            stock INTEGER DEFAULT 0,
-            stock_minimo INTEGER DEFAULT 5
-        )`);
-        
-        db.run(`CREATE TABLE IF NOT EXISTS ventas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            cliente_id INTEGER, 
-            fecha DATETIME DEFAULT (datetime('now', '-5 hours'))
-        )`);
-        
-        db.run(`CREATE TABLE IF NOT EXISTS detalle_ventas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            venta_id INTEGER, 
-            producto_id INTEGER, 
-            cantidad INTEGER, 
-            precio_final REAL
-        )`);
-        
-        console.log("✅ Base de datos creada correctamente");
-    });
-
+    // BASE DE DATOS con better-sqlite3
+    const db = new Database(path.join(process.cwd(), 'manager.db'));
+    
+    // Crear tablas
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT UNIQUE, pass TEXT);
+        CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT);
+        CREATE TABLE IF NOT EXISTS productos (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, precio_base REAL, stock INTEGER DEFAULT 0, stock_minimo INTEGER DEFAULT 5);
+        CREATE TABLE IF NOT EXISTS ventas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, fecha DATETIME DEFAULT (datetime('now', '-5 hours')));
+        CREATE TABLE IF NOT EXISTS detalle_ventas (id INTEGER PRIMARY KEY AUTOINCREMENT, venta_id INTEGER, producto_id INTEGER, cantidad INTEGER, precio_final REAL);
+    `);
+    
+    // Agregar columnas de deudas
+    try { db.exec(`ALTER TABLE clientes ADD COLUMN total_deuda REAL DEFAULT 0`); } catch(e) {}
+    try { db.exec(`ALTER TABLE clientes ADD COLUMN total_pagado REAL DEFAULT 0`); } catch(e) {}
+    try { db.exec(`ALTER TABLE clientes ADD COLUMN ultima_deuda TEXT`); } catch(e) {}
+    try { db.exec(`ALTER TABLE clientes ADD COLUMN ultimo_pago TEXT`); } catch(e) {}
+    
+    // Crear tabla de pagos
+    db.exec(`CREATE TABLE IF NOT EXISTS pagos (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, monto REAL, fecha_pago TEXT, observacion TEXT, FOREIGN KEY (cliente_id) REFERENCES clientes(id))`);
+    
+    console.log("✅ Base de datos creada correctamente");
+    
     // ==================== RUTAS DE AUTENTICACIÓN ====================
     app.post('/api/auth/register', (req, res) => {
         const { user, pass } = req.body;
-        
-        db.run(
-            "INSERT INTO usuarios (user, pass) VALUES (?, ?)", 
-            [user, pass], 
-            function(err) {
-                if (err) {
-                    if (err.message.includes('UNIQUE')) {
-                        return res.status(400).json({ error: "El usuario ya existe" });
-                    }
-                    return res.status(400).json({ error: err.message });
-                }
-                res.json({ id: this.lastID, status: "registrado" });
-            }
-        );
-    });
-
-    app.post('/api/auth/login', (req, res) => {
-        const { user, pass } = req.body;
-        
-        db.get(
-            "SELECT * FROM usuarios WHERE user = ? AND pass = ?", 
-            [user, pass], 
-            (err, row) => {
-                if (row) {
-                    res.json({ status: "ok", user: row.user });
-                } else {
-                    res.status(401).json({ error: "Credenciales incorrectas" });
-                }
-            }
-        );
-    });
-    // ==================== RUTAS PARA CUENTAS POR COBRAR ====================
-
-// Agregar columnas a la tabla clientes (con verificación)
-const agregarColumna = (columna, tipo, defecto = null) => {
-    let sql = `ALTER TABLE clientes ADD COLUMN ${columna} ${tipo}`;
-    if (defecto !== null) sql += ` DEFAULT ${defecto}`;
-    db.run(sql, (err) => {
-        if (err && !err.message.includes('duplicate column name')) {
-            console.log(`⚠️ Error agregando ${columna}:`, err.message);
-        } else if (!err) {
-            console.log(`✅ Columna ${columna} agregada`);
+        try {
+            const info = db.prepare("INSERT INTO usuarios (user, pass) VALUES (?, ?)").run(user, pass);
+            res.json({ id: info.lastInsertRowid, status: "registrado" });
+        } catch (err) {
+            if (err.message.includes('UNIQUE')) return res.status(400).json({ error: "El usuario ya existe" });
+            res.status(400).json({ error: err.message });
         }
     });
-};
-
-agregarColumna('total_deuda', 'REAL', 0);
-agregarColumna('total_pagado', 'REAL', 0);
-agregarColumna('ultima_deuda', 'TEXT');
-agregarColumna('ultimo_pago', 'TEXT');
-
-// Crear tabla de pagos
-db.run(`CREATE TABLE IF NOT EXISTS pagos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER,
-    monto REAL,
-    fecha_pago TEXT,
-    observacion TEXT,
-    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
-)`, (err) => {
-    if (err) console.log('❌ Error:', err.message);
-    else console.log('✅ Tabla pagos lista');
-});
-
-// Obtener deudores con paginación
-app.get('/api/deudores', (req, res) => {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
-    const search = req.query.search || '';
-    const filtro = req.query.filtro || 'todos';
     
-    let query = `
-        SELECT c.id, c.nombre, 
-               COALESCE(c.total_deuda, 0) as total_deuda,
-               COALESCE(c.total_pagado, 0) as total_pagado,
-               CASE 
-                   WHEN c.ultima_deuda IS NOT NULL 
-                   THEN julianday('now') - julianday(c.ultima_deuda) 
-                   ELSE 0 
-               END as dias_vencidos,
-               c.ultimo_pago
-        FROM clientes c
-        WHERE 1=1
-    `;
-    let countQuery = `SELECT COUNT(*) as total FROM clientes c WHERE 1=1`;
-    let params = [];
-    
-    if (search) {
-        query += ` AND c.nombre LIKE ?`;
-        countQuery += ` AND c.nombre LIKE ?`;
-        params.push(`%${search}%`);
-    }
-    
-    if (filtro === 'morosos') {
-        query += ` AND COALESCE(c.total_deuda, 0) > COALESCE(c.total_pagado, 0)`;
-        countQuery += ` AND COALESCE(c.total_deuda, 0) > COALESCE(c.total_pagado, 0)`;
-    } else if (filtro === 'pagados') {
-        query += ` AND COALESCE(c.total_deuda, 0) <= COALESCE(c.total_pagado, 0)`;
-        countQuery += ` AND COALESCE(c.total_deuda, 0) <= COALESCE(c.total_pagado, 0)`;
-    }
-    
-    query += ` ORDER BY (COALESCE(c.total_deuda, 0) - COALESCE(c.total_pagado, 0)) DESC LIMIT ? OFFSET ?`;
-    
-    db.get(countQuery, params, (err, countResult) => {
-        if (err) return res.status(500).json({ error: err.message });
-        
-        const total = countResult?.total || 0;
-        
-        db.all(query, [...params, limit, offset], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            
-            res.json({
-                data: rows || [],
-                pagination: {
-                    page, limit, total,
-                    totalPages: Math.ceil(total / limit)
-                }
-            });
-        });
+    app.post('/api/auth/login', (req, res) => {
+        const { user, pass } = req.body;
+        const row = db.prepare("SELECT * FROM usuarios WHERE user = ? AND pass = ?").get(user, pass);
+        row ? res.json({ status: "ok", user: row.user }) : res.status(401).json({ error: "Credenciales incorrectas" });
     });
-});
-
-// Registrar pago
-app.post('/api/registrar-pago', (req, res) => {
-    const { cliente_id, monto, fecha, observacion } = req.body;
     
-    if (!cliente_id || !monto || monto <= 0 || !fecha) {
-        return res.status(400).json({ error: 'Datos incompletos' });
-    }
-    
-    db.serialize(() => {
-        db.run(`INSERT INTO pagos (cliente_id, monto, fecha_pago, observacion) VALUES (?, ?, ?, ?)`,
-            [cliente_id, monto, fecha, observacion || ''],
-            function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                
-                db.run(`UPDATE clientes SET total_pagado = COALESCE(total_pagado, 0) + ?, ultimo_pago = ? WHERE id = ?`,
-                    [monto, fecha, cliente_id],
-                    (err) => {
-                        if (err) return res.status(500).json({ error: err.message });
-                        res.json({ success: true, message: 'Pago registrado' });
-                    });
-            });
-    });
-});
-
-// Registrar deuda manual
-app.post('/api/registrar-deuda-manual', (req, res) => {
-    const { cliente_id, monto, fecha, descripcion } = req.body;
-    
-    if (!cliente_id || !monto || monto <= 0 || !fecha) {
-        return res.status(400).json({ error: 'Datos incompletos' });
-    }
-    
-    db.run(`UPDATE clientes SET total_deuda = COALESCE(total_deuda, 0) + ?, ultima_deuda = ? WHERE id = ?`,
-        [monto, fecha, cliente_id],
-        function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true, message: 'Deuda registrada' });
-        });
-});
-
-// Ajustar deuda manualmente
-app.put('/api/ajustar-deuda/:id', (req, res) => {
-    const { id } = req.params;
-    const { total_deuda } = req.body;
-    
-    if (total_deuda === undefined || total_deuda < 0) {
-        return res.status(400).json({ error: 'Monto inválido' });
-    }
-    
-    db.run(`UPDATE clientes SET total_deuda = ? WHERE id = ?`,
-        [total_deuda, id],
-        function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true, message: 'Deuda actualizada' });
-        });
-});
-
-// Obtener historial de pagos de un cliente
-app.get('/api/historial-pagos/:clienteId', (req, res) => {
-    const { clienteId } = req.params;
-    
-    db.all(`SELECT * FROM pagos WHERE cliente_id = ? ORDER BY fecha_pago DESC`,
-        [clienteId],
-        (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows || []);
-        });
-});
-app.get('/api/total-pagos', (req, res) => {
-    db.get(`SELECT COALESCE(SUM(monto), 0) as total FROM pagos`, [], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ total: row?.total || 0 });
-    });
-});
-    // ==================== RUTAS DE CLIENTES CON DATOS DE COMPRAS ====================
+    // ==================== RUTAS DE CLIENTES ====================
     app.get('/api/clientes', (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -434,90 +174,35 @@ app.get('/api/total-pagos', (req, res) => {
             countQuery += " WHERE nombre LIKE ?";
             params.push(`%${search}%`);
         }
-        
         query += " ORDER BY nombre LIMIT ? OFFSET ?";
         
-        db.get(countQuery, params.slice(0, params.length), (err, countResult) => {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            
-            const total = countResult?.total || 0;
-            
-            db.all(query, [...params, limit, offset], (err, rows) => {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                
-                const clientesPromises = rows.map(cliente => {
-                    return new Promise((resolve, reject) => {
-                        db.get(`
-                            SELECT COUNT(*) as compras, COALESCE(SUM(d.cantidad * d.precio_final), 0) as total_gastado
-                            FROM ventas v
-                            JOIN detalle_ventas d ON v.id = d.venta_id
-                            WHERE v.cliente_id = ?
-                        `, [cliente.id], (err, stats) => {
-                            if (err) reject(err);
-                            else resolve({
-                                ...cliente,
-                                compras: stats?.compras || 0,
-                                total_gastado: stats?.total_gastado || 0
-                            });
-                        });
-                    });
-                });
-                
-                Promise.all(clientesPromises)
-                    .then(clientesConDatos => {
-                        res.json({
-                            data: clientesConDatos || [],
-                            pagination: {
-                                page: page,
-                                limit: limit,
-                                total: total,
-                                totalPages: Math.ceil(total / limit)
-                            }
-                        });
-                    })
-                    .catch(err => {
-                        res.status(500).json({ error: err.message });
-                    });
-            });
+        const total = db.prepare(countQuery).get(params.slice(0, params.length))?.total || 0;
+        const rows = db.prepare(query).all(...params, limit, offset);
+        
+        const clientesConDatos = rows.map(cliente => {
+            const stats = db.prepare(`SELECT COUNT(*) as compras, COALESCE(SUM(d.cantidad * d.precio_final), 0) as total_gastado FROM ventas v JOIN detalle_ventas d ON v.id = d.venta_id WHERE v.cliente_id = ?`).get(cliente.id);
+            return { ...cliente, compras: stats?.compras || 0, total_gastado: stats?.total_gastado || 0 };
         });
+        
+        res.json({ data: clientesConDatos, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
     });
-
+    
     app.post('/api/clientes', (req, res) => {
         const { nombre } = req.body;
-        db.run(
-            "INSERT INTO clientes (nombre) VALUES (?)", 
-            [nombre], 
-            function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ id: this.lastID, nombre });
-            }
-        );
+        const info = db.prepare("INSERT INTO clientes (nombre) VALUES (?)").run(nombre);
+        res.json({ id: info.lastInsertRowid, nombre });
     });
-
+    
     app.put('/api/clientes/:id', (req, res) => {
-        const { nombre } = req.body;
-        const { id } = req.params;
-        db.run(
-            "UPDATE clientes SET nombre = ? WHERE id = ?", 
-            [nombre, id], 
-            function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ status: "ok" });
-            }
-        );
+        db.prepare("UPDATE clientes SET nombre = ? WHERE id = ?").run(req.body.nombre, req.params.id);
+        res.json({ status: "ok" });
     });
-
+    
     app.delete('/api/clientes/:id', (req, res) => {
-        db.run("DELETE FROM clientes WHERE id = ?", [req.params.id], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ status: "ok" });
-        });
+        db.prepare("DELETE FROM clientes WHERE id = ?").run(req.params.id);
+        res.json({ status: "ok" });
     });
-
+    
     // ==================== RUTAS DE PRODUCTOS ====================
     app.get('/api/productos', (req, res) => {
         const page = parseInt(req.query.page) || 1;
@@ -526,532 +211,271 @@ app.get('/api/total-pagos', (req, res) => {
         const search = req.query.search || '';
         const filtro = req.query.filtro || 'todos';
         
-        let query = "SELECT * FROM productos";
-        let countQuery = "SELECT COUNT(*) as total FROM productos";
+        let where = "";
         let params = [];
-        let whereConditions = [];
         
-        if (search) {
-            whereConditions.push("nombre LIKE ?");
-            params.push(`%${search}%`);
-        }
+        if (search) { where += " WHERE nombre LIKE ?"; params.push(`%${search}%`); }
+        if (filtro === 'bajo') where += (where ? " AND" : " WHERE") + " stock <= stock_minimo AND stock > 0";
+        else if (filtro === 'agotados') where += (where ? " AND" : " WHERE") + " stock = 0";
         
-        if (filtro === 'bajo') {
-            whereConditions.push("stock <= stock_minimo AND stock > 0");
-        } else if (filtro === 'agotados') {
-            whereConditions.push("stock = 0");
-        }
-        
-        if (whereConditions.length > 0) {
-            const whereClause = " WHERE " + whereConditions.join(" AND ");
-            query += whereClause;
-            countQuery += whereClause;
-        }
-        
-        query += " ORDER BY nombre LIMIT ? OFFSET ?";
-        
-        db.get(countQuery, params, (err, countResult) => {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            
-            const total = countResult?.total || 0;
-            
-            db.all(query, [...params, limit, offset], (err, rows) => {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                
-                res.json({
-                    data: rows || [],
-                    pagination: {
-                        page: page,
-                        limit: limit,
-                        total: total,
-                        totalPages: Math.ceil(total / limit)
-                    }
-                });
-            });
-        });
+        const total = db.prepare(`SELECT COUNT(*) as total FROM productos${where}`).get(...params)?.total || 0;
+        const rows = db.prepare(`SELECT * FROM productos${where} ORDER BY nombre LIMIT ? OFFSET ?`).all(...params, limit, offset);
+        res.json({ data: rows, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
     });
-
+    
     app.post('/api/productos', (req, res) => {
         const { nombre, precio, stock, stock_minimo } = req.body;
-        db.run(
-            "INSERT INTO productos (nombre, precio_base, stock, stock_minimo) VALUES (?, ?, ?, ?)", 
-            [nombre, precio, stock || 0, stock_minimo || 5], 
-            function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ id: this.lastID });
-            }
-        );
+        const info = db.prepare("INSERT INTO productos (nombre, precio_base, stock, stock_minimo) VALUES (?, ?, ?, ?)").run(nombre, precio, stock || 0, stock_minimo || 5);
+        res.json({ id: info.lastInsertRowid });
     });
-
+    
     app.put('/api/productos/:id', (req, res) => {
-        const { nombre, precio } = req.body;
-        const { id } = req.params;
-        db.run(
-            "UPDATE productos SET nombre = ?, precio_base = ? WHERE id = ?", 
-            [nombre, precio, id], 
-            function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ status: "ok" });
-            }
-        );
+        db.prepare("UPDATE productos SET nombre = ?, precio_base = ? WHERE id = ?").run(req.body.nombre, req.body.precio, req.params.id);
+        res.json({ status: "ok" });
     });
-
+    
     app.put('/api/productos/:id/stock', (req, res) => {
-        const { id } = req.params;
         const { stock, stock_minimo } = req.body;
-        
-        let query = "UPDATE productos SET ";
-        const params = [];
-        
-        if (stock !== undefined) {
-            query += "stock = ?, ";
-            params.push(stock);
-        }
-        if (stock_minimo !== undefined) {
-            query += "stock_minimo = ?, ";
-            params.push(stock_minimo);
-        }
-        
-        query = query.slice(0, -2) + " WHERE id = ?";
-        params.push(id);
-        
-        db.run(query, params, function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ status: "ok", changes: this.changes });
-        });
+        if (stock !== undefined) db.prepare("UPDATE productos SET stock = ? WHERE id = ?").run(stock, req.params.id);
+        if (stock_minimo !== undefined) db.prepare("UPDATE productos SET stock_minimo = ? WHERE id = ?").run(stock_minimo, req.params.id);
+        res.json({ status: "ok" });
     });
-
+    
     app.delete('/api/productos/:id', (req, res) => {
-        db.run("DELETE FROM productos WHERE id = ?", [req.params.id], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ status: "ok" });
-        });
+        db.prepare("DELETE FROM productos WHERE id = ?").run(req.params.id);
+        res.json({ status: "ok" });
     });
-
+    
     app.get('/api/productos/stock-bajo', (req, res) => {
-        db.all("SELECT * FROM productos WHERE stock <= stock_minimo AND stock > 0 ORDER BY stock ASC", [], (err, rows) => {
-            res.json(rows || []);
-        });
+        const rows = db.prepare("SELECT * FROM productos WHERE stock <= stock_minimo AND stock > 0 ORDER BY stock ASC").all();
+        res.json(rows);
     });
-
+    
     app.get('/api/productos/agotados', (req, res) => {
-        db.all("SELECT * FROM productos WHERE stock = 0", [], (err, rows) => {
-            res.json(rows || []);
-        });
+        const rows = db.prepare("SELECT * FROM productos WHERE stock = 0").all();
+        res.json(rows);
     });
-
- // ==================== RUTAS DE VENTAS CON PAGINACIÓN ====================
-app.get('/api/historial', (req, res) => {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
-    const search = req.query.search || '';
     
-    let countQuery = `
-        SELECT COUNT(DISTINCT v.id) as total
-        FROM ventas v
-        JOIN clientes c ON v.cliente_id = c.id
-    `;
-    
-    let countParams = [];
-    
-    if (search) {
-        countQuery += ` WHERE c.nombre LIKE ?`;
-        countParams.push(`%${search}%`);
-    }
-    
-    let query = `
-        SELECT v.id, c.nombre as cliente, v.fecha, 
-               COALESCE(SUM(d.cantidad * d.precio_final), 0) as total,
-               COUNT(d.id) as items
-        FROM ventas v
-        JOIN clientes c ON v.cliente_id = c.id
-        LEFT JOIN detalle_ventas d ON v.id = d.venta_id
-    `;
-    
-    let queryParams = [];
-    
-    if (search) {
-        query += ` WHERE c.nombre LIKE ?`;
-        queryParams.push(`%${search}%`);
-    }
-    
-    query += ` GROUP BY v.id ORDER BY v.fecha DESC LIMIT ? OFFSET ?`;
-    
-    db.get(countQuery, countParams, (err, countResult) => {
-        if (err) {
-            console.error("Error en count:", err);
-            return res.status(500).json({ error: err.message });
-        }
+    // ==================== RUTAS DE VENTAS ====================
+    app.get('/api/historial', (req, res) => {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+        const search = req.query.search || '';
         
-        const total = countResult?.total || 0;
+        let where = "";
+        let params = [];
+        if (search) { where = " WHERE c.nombre LIKE ?"; params.push(`%${search}%`); }
         
-        db.all(query, [...queryParams, limit, offset], (err, rows) => {
-            if (err) {
-                console.error("Error en query:", err);
-                return res.status(500).json({ error: err.message });
+        const total = db.prepare(`SELECT COUNT(DISTINCT v.id) as total FROM ventas v JOIN clientes c ON v.cliente_id = c.id${where}`).get(...params)?.total || 0;
+        const rows = db.prepare(`
+            SELECT v.id, c.nombre as cliente, v.fecha, COALESCE(SUM(d.cantidad * d.precio_final), 0) as total, COUNT(d.id) as items
+            FROM ventas v JOIN clientes c ON v.cliente_id = c.id LEFT JOIN detalle_ventas d ON v.id = d.venta_id
+            ${where} GROUP BY v.id ORDER BY v.fecha DESC LIMIT ? OFFSET ?
+        `).all(...params, limit, offset);
+        
+        const ventas = rows.map(v => {
+            let fechaFormateada = '';
+            if (v.fecha) {
+                let fechaLimpia = v.fecha.toString().trim();
+                if (fechaLimpia.includes(' ')) fechaLimpia = fechaLimpia.split(' ')[0];
+                if (fechaLimpia.includes('-')) {
+                    const partes = fechaLimpia.split('-');
+                    fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                } else fechaFormateada = fechaLimpia;
+            }
+            return { ...v, fecha: fechaFormateada, total: v.total || 0, items: v.items || 0 };
+        });
+        
+        res.json({ data: ventas, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    });
+    
+    app.post('/api/ventas', (req, res) => {
+        const { cliente_id, items } = req.body;
+        const totalVenta = items.reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
+        
+        try {
+            // Verificar stock
+            for (const item of items) {
+                const producto = db.prepare("SELECT nombre, stock FROM productos WHERE id = ?").get(item.id);
+                if (!producto || producto.stock < item.cantidad) {
+                    return res.status(400).json({ error: `Stock insuficiente para ${producto?.nombre || 'producto'}` });
+                }
             }
             
-            const ventas = (rows || []).map(v => {
-                let fechaFormateada = '';
-                
-                if (v.fecha) {
-                    try {
-                        // Limpiar la fecha: eliminar espacios y tomar solo la parte de fecha
-                        let fechaLimpia = v.fecha.toString().trim();
-                        
-                        // Si tiene espacio (ej: "2026-04-08 03:14:27"), tomar solo la primera parte
-                        if (fechaLimpia.includes(' ')) {
-                            fechaLimpia = fechaLimpia.split(' ')[0];
-                        }
-                        
-                        // Formato YYYY-MM-DD a DD/MM/YYYY
-                        if (fechaLimpia.includes('-')) {
-                            const partes = fechaLimpia.split('-');
-                            if (partes.length === 3) {
-                                fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
-                            } else {
-                                fechaFormateada = fechaLimpia;
-                            }
-                        } else {
-                            fechaFormateada = fechaLimpia;
-                        }
-                    } catch (e) {
-                        console.error("Error formateando fecha:", v.fecha, e);
-                        fechaFormateada = v.fecha;
-                    }
-                }
-                
-                return {
-                    ...v,
-                    fecha: fechaFormateada,
-                    total: v.total || 0,
-                    items: v.items || 0
-                };
-            });
-            
-            res.json({
-                data: ventas,
-                pagination: {
-                    page: page,
-                    limit: limit,
-                    total: total,
-                    totalPages: Math.ceil(total / limit)
-                }
-            });
-        });
-    });
-});
-app.post('/api/ventas', (req, res) => {
-    const { cliente_id, items } = req.body;
-    
-    // Calcular el total de la venta
-    const totalVenta = items.reduce((sum, item) => sum + (item.cantidad * item.precio), 0);
-    
-    const checkStock = items.map(item => {
-        return new Promise((resolve, reject) => {
-            db.get("SELECT nombre, stock FROM productos WHERE id = ?", [item.id], (err, row) => {
-                if (err) reject(err);
-                if (!row || row.stock < item.cantidad) {
-                    reject(new Error(`Stock insuficiente para ${row?.nombre || 'producto'}`));
-                }
-                resolve();
-            });
-        });
-    });
-    
-    Promise.all(checkStock)
-        .then(() => {
-            // Usar hora Colombia explícitamente
             const now = new Date();
-            const colombiaOffset = -5 * 60 * 60 * 1000;
-            const colombiaDate = new Date(now.getTime() + colombiaOffset);
+            const colombiaDate = new Date(now.getTime() - (5 * 60 * 60 * 1000));
             const fechaColombia = colombiaDate.toISOString().slice(0, 19).replace('T', ' ');
             
-            db.run(
-                "INSERT INTO ventas (cliente_id, fecha) VALUES (?, ?)", 
-                [cliente_id, fechaColombia], 
-                function(err) {
-                    if (err) return res.status(500).json({ error: err.message });
-                    
-                    const venta_id = this.lastID;
-                    const stmt = db.prepare(
-                        "INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_final) VALUES (?, ?, ?, ?)"
-                    );
-                    
-                    items.forEach(item => {
-                        stmt.run(venta_id, item.id, item.cantidad, item.precio);
-                        db.run("UPDATE productos SET stock = stock - ? WHERE id = ?", [item.cantidad, item.id]);
-                    });
-                    
-                    stmt.finalize();
-                    
-                    // 🔥 ACTUALIZAR DEUDA DEL CLIENTE AUTOMÁTICAMENTE 🔥
-                    db.run(`UPDATE clientes SET 
-                        total_deuda = COALESCE(total_deuda, 0) + ?,
-                        ultima_deuda = ?
-                        WHERE id = ?`,
-                        [totalVenta, fechaColombia, cliente_id],
-                        (err) => {
-                            if (err) console.error("Error actualizando deuda:", err);
-                        });
-                    
-                    db.all("SELECT * FROM productos WHERE stock <= stock_minimo AND stock > 0", [], (err, bajo) => {
-                        db.all("SELECT * FROM productos WHERE stock = 0", [], (err, agotados) => {
-                            res.json({ 
-                                id: venta_id, 
-                                status: "venta registrada",
-                                deuda_agregada: totalVenta,
-                                alertas: {
-                                    stock_bajo: bajo || [],
-                                    agotados: agotados || []
-                                }
-                            });
-                        });
-                    });
-                }
-            );
-        })
-        .catch(err => {
-            res.status(400).json({ error: err.message });
-        });
-});
-    app.delete('/api/ventas/:id', (req, res) => {
-        const ventaId = req.params.id;
-        
-        db.serialize(() => {
-            db.run("DELETE FROM detalle_ventas WHERE venta_id = ?", [ventaId]);
-            db.run("DELETE FROM ventas WHERE id = ?", [ventaId], function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ status: "ok" });
-            });
-        });
-    });
-
-    // ==================== RUTA PARA OBTENER DETALLES DE UNA VENTA ====================
-    app.get('/api/ventas/:id/detalles', (req, res) => {
-        const ventaId = req.params.id;
-        
-        const query = `
-            SELECT d.cantidad, d.precio_final, p.nombre
-            FROM detalle_ventas d
-            JOIN productos p ON d.producto_id = p.id
-            WHERE d.venta_id = ?
-        `;
-        
-        db.all(query, [ventaId], (err, rows) => {
-            if (err) {
-                console.error("Error obteniendo detalles:", err);
-                return res.status(500).json({ error: err.message });
+            const info = db.prepare("INSERT INTO ventas (cliente_id, fecha) VALUES (?, ?)").run(cliente_id, fechaColombia);
+            const venta_id = info.lastInsertRowid;
+            
+            for (const item of items) {
+                db.prepare("INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_final) VALUES (?, ?, ?, ?)").run(venta_id, item.id, item.cantidad, item.precio);
+                db.prepare("UPDATE productos SET stock = stock - ? WHERE id = ?").run(item.cantidad, item.id);
             }
-            res.json(rows || []);
-        });
+            
+            db.prepare(`UPDATE clientes SET total_deuda = COALESCE(total_deuda, 0) + ?, ultima_deuda = ? WHERE id = ?`).run(totalVenta, fechaColombia, cliente_id);
+            
+            const bajo = db.prepare("SELECT * FROM productos WHERE stock <= stock_minimo AND stock > 0").all();
+            const agotados = db.prepare("SELECT * FROM productos WHERE stock = 0").all();
+            
+            res.json({ id: venta_id, status: "venta registrada", deuda_agregada: totalVenta, alertas: { stock_bajo: bajo, agotados: agotados } });
+        } catch (err) {
+            res.status(400).json({ error: err.message });
+        }
     });
-
-    // ==================== RUTA PARA ACTUALIZAR UNA VENTA (EDITAR) ====================
+    
+    app.delete('/api/ventas/:id', (req, res) => {
+        db.prepare("DELETE FROM detalle_ventas WHERE venta_id = ?").run(req.params.id);
+        db.prepare("DELETE FROM ventas WHERE id = ?").run(req.params.id);
+        res.json({ status: "ok" });
+    });
+    
+    app.get('/api/ventas/:id/detalles', (req, res) => {
+        const rows = db.prepare(`SELECT d.cantidad, d.precio_final, p.nombre FROM detalle_ventas d JOIN productos p ON d.producto_id = p.id WHERE d.venta_id = ?`).all(req.params.id);
+        res.json(rows);
+    });
+    
     app.put('/api/ventas/:id', (req, res) => {
         const ventaId = req.params.id;
         const { cliente_id, items } = req.body;
         
-        console.log("📝 Actualizando venta ID:", ventaId, "con items:", items);
-        
-        // Primero, verificar stock disponible para los nuevos items
-        const checkStock = items.map(item => {
-            return new Promise((resolve, reject) => {
-                db.get("SELECT nombre, stock FROM productos WHERE id = ?", [item.id], (err, row) => {
-                    if (err) reject(err);
-                    if (!row) reject(new Error('Producto no encontrado'));
-                    if (row.stock < item.cantidad) {
-                        reject(new Error(`Stock insuficiente para ${row.nombre}. Disponible: ${row.stock}`));
-                    }
-                    resolve(row);
-                });
-            });
-        });
-        
-        Promise.all(checkStock)
-            .then(() => {
-                // Iniciar transacción
-                db.serialize(() => {
-                    // 1. Obtener los detalles antiguos para devolver el stock
-                    db.all("SELECT producto_id, cantidad FROM detalle_ventas WHERE venta_id = ?", [ventaId], (err, oldItems) => {
-                        if (err) {
-                            return res.status(500).json({ error: err.message });
-                        }
-                        
-                        console.log("🔄 Devolviendo stock de items antiguos:", oldItems);
-                        
-                        // 2. Devolver el stock de los productos antiguos
-                        oldItems.forEach(oldItem => {
-                            db.run("UPDATE productos SET stock = stock + ? WHERE id = ?", [oldItem.cantidad, oldItem.producto_id]);
-                        });
-                        
-                        // 3. Eliminar detalles antiguos
-                        db.run("DELETE FROM detalle_ventas WHERE venta_id = ?", [ventaId], (err) => {
-                            if (err) {
-                                return res.status(500).json({ error: err.message });
-                            }
-                            
-                            // 4. Insertar nuevos detalles
-                            const stmt = db.prepare(
-                                "INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_final) VALUES (?, ?, ?, ?)"
-                            );
-                            
-                            items.forEach(item => {
-                                stmt.run(ventaId, item.id, item.cantidad, item.precio);
-                                // 5. Restar el nuevo stock
-                                db.run("UPDATE productos SET stock = stock - ? WHERE id = ?", [item.cantidad, item.id]);
-                            });
-                            
-                            stmt.finalize();
-                            
-                            // 6. Actualizar la fecha de la venta (opcional, para mantener la fecha actual)
-                            db.run("UPDATE ventas SET fecha = CURRENT_TIMESTAMP WHERE id = ?", [ventaId], (err) => {
-                                if (err) {
-                                    return res.status(500).json({ error: err.message });
-                                }
-                                
-                                // 7. Obtener alertas de stock
-                                db.all("SELECT * FROM productos WHERE stock <= stock_minimo AND stock > 0", [], (err, bajo) => {
-                                    db.all("SELECT * FROM productos WHERE stock = 0", [], (err, agotados) => {
-                                        res.json({ 
-                                            id: ventaId, 
-                                            status: "venta actualizada",
-                                            alertas: {
-                                                stock_bajo: bajo || [],
-                                                agotados: agotados || []
-                                            }
-                                        });
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
-            })
-            .catch(err => {
-                console.error("Error actualizando venta:", err);
-                res.status(400).json({ error: err.message });
-            });
+        try {
+            // Verificar stock
+            for (const item of items) {
+                const producto = db.prepare("SELECT nombre, stock FROM productos WHERE id = ?").get(item.id);
+                if (!producto || producto.stock < item.cantidad) {
+                    return res.status(400).json({ error: `Stock insuficiente para ${producto?.nombre || 'producto'}` });
+                }
+            }
+            
+            const oldItems = db.prepare("SELECT producto_id, cantidad FROM detalle_ventas WHERE venta_id = ?").all(ventaId);
+            for (const oldItem of oldItems) {
+                db.prepare("UPDATE productos SET stock = stock + ? WHERE id = ?").run(oldItem.cantidad, oldItem.producto_id);
+            }
+            
+            db.prepare("DELETE FROM detalle_ventas WHERE venta_id = ?").run(ventaId);
+            
+            for (const item of items) {
+                db.prepare("INSERT INTO detalle_ventas (venta_id, producto_id, cantidad, precio_final) VALUES (?, ?, ?, ?)").run(ventaId, item.id, item.cantidad, item.precio);
+                db.prepare("UPDATE productos SET stock = stock - ? WHERE id = ?").run(item.cantidad, item.id);
+            }
+            
+            db.prepare("UPDATE ventas SET fecha = CURRENT_TIMESTAMP WHERE id = ?").run(ventaId);
+            
+            const bajo = db.prepare("SELECT * FROM productos WHERE stock <= stock_minimo AND stock > 0").all();
+            const agotados = db.prepare("SELECT * FROM productos WHERE stock = 0").all();
+            
+            res.json({ id: ventaId, status: "venta actualizada", alertas: { stock_bajo: bajo, agotados: agotados } });
+        } catch (err) {
+            res.status(400).json({ error: err.message });
+        }
     });
-
-   // ==================== RUTAS PARA ESTADÍSTICAS DEL DASHBOARD (CORREGIDO) ====================
-app.get('/api/estadisticas', (req, res) => {
-    // Obtener fecha actual en COLOMBIA (UTC-5)
-    const now = new Date();
-    const colombiaOffset = -5 * 60; // UTC-5 en minutos
-    const colombiaDate = new Date(now.getTime() + (colombiaOffset * 60 * 1000));
     
-    // Formatear fecha para SQLite (YYYY-MM-DD)
-    const yearCol = colombiaDate.getUTCFullYear();
-    const monthCol = String(colombiaDate.getUTCMonth() + 1).padStart(2, '0');
-    const dayCol = String(colombiaDate.getUTCDate()).padStart(2, '0');
-    const todayColombia = `${yearCol}-${monthCol}-${dayCol}`;
-    const currentMonth = monthCol;
-    const currentYear = yearCol;
-    
-
-    // Query ventas últimos 7 días (usando la fecha Colombia como referencia)
-    const queryVentas7Dias = `
-        SELECT date(v.fecha) as fecha, 
-               COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
-        FROM ventas v
-        JOIN detalle_ventas d ON v.id = d.venta_id
-        WHERE date(v.fecha) >= date('${todayColombia}', '-7 days')
-        GROUP BY date(v.fecha)
-        ORDER BY fecha ASC
-    `;
-    
-    // Query productos más vendidos
-    const queryProductosTop = `
-        SELECT p.nombre, 
-               COALESCE(SUM(d.cantidad), 0) as cantidad, 
-               COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
-        FROM detalle_ventas d
-        JOIN productos p ON d.producto_id = p.id
-        GROUP BY d.producto_id
-        ORDER BY cantidad DESC
-        LIMIT 5
-    `;
-    
-    // Query ventas del mes actual (SOLO este mes y año)
-    const queryVentasMes = `
-        SELECT COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
-        FROM ventas v
-        JOIN detalle_ventas d ON v.id = d.venta_id
-        WHERE strftime('%m', v.fecha) = '${currentMonth}'
-        AND strftime('%Y', v.fecha) = '${currentYear}'
-    `;
-    
-    // Query ventas de hoy
-    const queryVentasHoy = `
-        SELECT COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
-        FROM ventas v
-        JOIN detalle_ventas d ON v.id = d.venta_id
-        WHERE date(v.fecha) = '${todayColombia}'
-    `;
-    
-    // Query mejores clientes
-    const queryMejoresClientes = `
-        SELECT c.nombre, 
-               COUNT(DISTINCT v.id) as compras,
-               COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
-        FROM clientes c
-        LEFT JOIN ventas v ON c.id = v.cliente_id
-        LEFT JOIN detalle_ventas d ON v.id = d.venta_id
-        GROUP BY c.id
-        ORDER BY total DESC
-        LIMIT 5
-    `;
-    
-    Promise.all([
-        new Promise((resolve, reject) => {
-            db.all(queryVentas7Dias, [], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows || []);
-            });
-        }),
-        new Promise((resolve, reject) => {
-            db.all(queryProductosTop, [], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows || []);
-            });
-        }),
-        new Promise((resolve, reject) => {
-            db.get(queryVentasMes, [], (err, row) => {
-                if (err) reject(err);
-                else resolve(row?.total || 0);
-            });
-        }),
-        new Promise((resolve, reject) => {
-            db.get(queryVentasHoy, [], (err, row) => {
-                if (err) reject(err);
-                else resolve(row?.total || 0);
-            });
-        }),
-        new Promise((resolve, reject) => {
-            db.all(queryMejoresClientes, [], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows || []);
-            });
-        })
-    ]).then(([ventas7Dias, productosTop, ventasMes, ventasHoy, mejoresClientes]) => {
-        res.json({
-            ventas7Dias,
-            productosTop,
-            ventasMes,
-            ventasHoy,
-            mejoresClientes
-        });
-    }).catch(err => {
-        console.error("Error en estadísticas:", err);
-        res.status(500).json({ error: err.message });
+    // ==================== RUTAS ESTADÍSTICAS ====================
+    app.get('/api/estadisticas', (req, res) => {
+        const now = new Date();
+        const colombiaDate = new Date(now.getTime() - (5 * 60 * 60 * 1000));
+        const todayColombia = colombiaDate.toISOString().slice(0, 10);
+        const currentMonth = colombiaDate.toISOString().slice(5, 7);
+        const currentYear = colombiaDate.toISOString().slice(0, 4);
+        
+        const ventas7Dias = db.prepare(`
+            SELECT date(v.fecha) as fecha, COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
+            FROM ventas v JOIN detalle_ventas d ON v.id = d.venta_id
+            WHERE date(v.fecha) >= date(?, '-7 days')
+            GROUP BY date(v.fecha) ORDER BY fecha ASC
+        `).all(todayColombia);
+        
+        const productosTop = db.prepare(`
+            SELECT p.nombre, COALESCE(SUM(d.cantidad), 0) as cantidad, COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
+            FROM detalle_ventas d JOIN productos p ON d.producto_id = p.id
+            GROUP BY d.producto_id ORDER BY cantidad DESC LIMIT 5
+        `).all();
+        
+        const ventasMes = db.prepare(`
+            SELECT COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
+            FROM ventas v JOIN detalle_ventas d ON v.id = d.venta_id
+            WHERE strftime('%m', v.fecha) = ? AND strftime('%Y', v.fecha) = ?
+        `).get(currentMonth, currentYear)?.total || 0;
+        
+        const ventasHoy = db.prepare(`
+            SELECT COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
+            FROM ventas v JOIN detalle_ventas d ON v.id = d.venta_id
+            WHERE date(v.fecha) = ?
+        `).get(todayColombia)?.total || 0;
+        
+        const mejoresClientes = db.prepare(`
+            SELECT c.nombre, COUNT(DISTINCT v.id) as compras, COALESCE(SUM(d.cantidad * d.precio_final), 0) as total
+            FROM clientes c LEFT JOIN ventas v ON c.id = v.cliente_id LEFT JOIN detalle_ventas d ON v.id = d.venta_id
+            GROUP BY c.id ORDER BY total DESC LIMIT 5
+        `).all();
+        
+        res.json({ ventas7Dias, productosTop, ventasMes, ventasHoy, mejoresClientes });
     });
-});
+    
+    // ==================== RUTAS CUENTAS POR COBRAR ====================
+    app.get('/api/deudores', (req, res) => {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+        const search = req.query.search || '';
+        const filtro = req.query.filtro || 'todos';
+        
+        let where = "";
+        let params = [];
+        if (search) { where += " AND c.nombre LIKE ?"; params.push(`%${search}%`); }
+        if (filtro === 'morosos') where += " AND COALESCE(c.total_deuda, 0) > COALESCE(c.total_pagado, 0)";
+        else if (filtro === 'pagados') where += " AND COALESCE(c.total_deuda, 0) <= COALESCE(c.total_pagado, 0)";
+        
+        const total = db.prepare(`SELECT COUNT(*) as total FROM clientes c WHERE 1=1${where}`).get(...params)?.total || 0;
+        const rows = db.prepare(`
+            SELECT c.id, c.nombre, COALESCE(c.total_deuda, 0) as total_deuda, COALESCE(c.total_pagado, 0) as total_pagado,
+                   CASE WHEN c.ultima_deuda IS NOT NULL THEN julianday('now') - julianday(c.ultima_deuda) ELSE 0 END as dias_vencidos,
+                   c.ultimo_pago
+            FROM clientes c WHERE 1=1${where}
+            ORDER BY (COALESCE(c.total_deuda, 0) - COALESCE(c.total_pagado, 0)) DESC LIMIT ? OFFSET ?
+        `).all(...params, limit, offset);
+        
+        res.json({ data: rows, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    });
+    
+    app.post('/api/registrar-pago', (req, res) => {
+        const { cliente_id, monto, fecha, observacion } = req.body;
+        if (!cliente_id || !monto || monto <= 0 || !fecha) return res.status(400).json({ error: 'Datos incompletos' });
+        
+        db.prepare("INSERT INTO pagos (cliente_id, monto, fecha_pago, observacion) VALUES (?, ?, ?, ?)").run(cliente_id, monto, fecha, observacion || '');
+        db.prepare("UPDATE clientes SET total_pagado = COALESCE(total_pagado, 0) + ?, ultimo_pago = ? WHERE id = ?").run(monto, fecha, cliente_id);
+        res.json({ success: true });
+    });
+    
+    app.post('/api/registrar-deuda-manual', (req, res) => {
+        const { cliente_id, monto, fecha } = req.body;
+        if (!cliente_id || !monto || monto <= 0 || !fecha) return res.status(400).json({ error: 'Datos incompletos' });
+        
+        db.prepare("UPDATE clientes SET total_deuda = COALESCE(total_deuda, 0) + ?, ultima_deuda = ? WHERE id = ?").run(monto, fecha, cliente_id);
+        res.json({ success: true });
+    });
+    
+    app.put('/api/ajustar-deuda/:id', (req, res) => {
+        const { total_deuda } = req.body;
+        if (total_deuda === undefined || total_deuda < 0) return res.status(400).json({ error: 'Monto inválido' });
+        
+        db.prepare("UPDATE clientes SET total_deuda = ? WHERE id = ?").run(total_deuda, req.params.id);
+        res.json({ success: true });
+    });
+    
+    app.get('/api/historial-pagos/:clienteId', (req, res) => {
+        const rows = db.prepare("SELECT * FROM pagos WHERE cliente_id = ? ORDER BY fecha_pago DESC").all(req.params.clienteId);
+        res.json(rows);
+    });
+    
+    app.get('/api/total-pagos', (req, res) => {
+        const row = db.prepare("SELECT COALESCE(SUM(monto), 0) as total FROM pagos").get();
+        res.json({ total: row?.total || 0 });
+    });
+    
     // ==================== RUTA PRINCIPAL ====================
     app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -1060,16 +484,12 @@ app.get('/api/estadisticas', (req, res) => {
 
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3011;
-
 app.listen(PORT, '0.0.0.0', () => {
     console.log('-----------------------------------------');
     console.log(`🚀 Manager Pro corriendo en:`);
     console.log(`📍 http://localhost:${PORT}`);
     console.log('-----------------------------------------');
-
     const url = `http://localhost:${PORT}`;
-    const start = process.platform === 'win32' ? 'start' : 
-                  process.platform === 'darwin' ? 'open' : 'xdg-open';
-    
+    const start = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
     exec(`${start} ${url}`);
 });
