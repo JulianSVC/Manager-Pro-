@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Activar Manager Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 550px;
+            padding: 35px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header i {
+            font-size: 50px;
+            color: #5e2b97;
+            background: #f0e6ff;
+            padding: 20px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: #f8f4ff;
+            border-left: 5px solid #5e2b97;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-box h3 {
+            color: #5e2b97;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box ul {
+            list-style: none;
+        }
+
+        .info-box li {
+            margin-bottom: 12px;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .info-box li i {
+            color: #5e2b97;
+            width: 20px;
+            text-align: center;
+        }
+
+        .hwid-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 2px solid #5e2b97;
+        }
+
+        .hwid-label {
+            color: #aaa;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .hwid-value {
+            background: #0d0d0d;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-break: break-all;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            margin-bottom: 15px;
+            line-height: 1.5;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .copy-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #444;
+        }
+
+        .copy-btn i {
+            font-size: 16px;
+        }
+
+        .licencia-input {
+            margin-bottom: 20px;
+        }
+
+        .licencia-input label {
+            display: block;
+            margin-bottom: 8px;
+            color: #444;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .licencia-input input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 3px;
+            transition: all 0.3s;
+        }
+
+        .licencia-input input:focus {
+            border-color: #5e2b97;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(94, 43, 151, 0.1);
+        }
+
+        .licencia-input input::placeholder {
+            color: #aaa;
+            font-size: 14px;
+            letter-spacing: normal;
+        }
+
+        .btn-activar {
+            background: #5e2b97;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .btn-activar:hover {
+            background: #7a3fc3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(94, 43, 151, 0.3);
+        }
+
+        .btn-activar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .contacto {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .contacto p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .contacto-items {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .contacto-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #5e2b97;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .contacto-item i {
+            font-size: 18px;
+        }
+
+        .contacto-item span {
+            color: #333;
+        }
+
+        .mensaje {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .exito {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .contacto-items {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <i class="fas fa-crown"></i>
+            <h1>🔐 ACTIVAR MANAGER PRO</h1>
+            <p>Versión 1.0.0</p>
+        </div>
+        
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> Para activar el software:</h3>
+            <ul>
+                <li><i class="fas fa-1"></i> Copia el código HWID de abajo</li>
+                <li><i class="fas fa-2"></i> Envíalo por WhatsApp al vendedor</li>
+                <li><i class="fas fa-3"></i> Ingresa la licencia que te den</li>
+            </ul>
+        </div>
+        
+        <div class="hwid-section">
+            <span class="hwid-label"><i class="fas fa-microchip"></i> TU CÓDIGO DE HARDWARE (HWID)</span>
+            <div class="hwid-value" id="hwid">
+                <span class="loading">Cargando...</span>
+            </div>
+            <button class="copy-btn" onclick="copiarHWID()" id="copyBtn" disabled>
+                <i class="fas fa-copy"></i> Copiar HWID
+            </button>
+        </div>
+        
+        <div class="licencia-input">
+            <label><i class="fas fa-key"></i> LICENCIA DE ACTIVACIÓN</label>
+            <input type="text" id="licencia" placeholder="Ej: A1B2C3D4E5F6G7H8I9J0" maxlength="20">
+        </div>
+        
+        <button class="btn-activar" onclick="activar()" id="activarBtn">
+            <i class="fas fa-check-circle"></i> ACTIVAR SOFTWARE
+        </button>
+        
+        <div class="contacto">
+            <p><i class="fas fa-headset"></i> ¿Necesitas ayuda? Contacta al vendedor:</p>
+            <div class="contacto-items">
+                <a href="https://wa.me/573123456789" class="contacto-item" target="_blank">
+                    <i class="fab fa-whatsapp" style="color: #25D366;"></i>
+                    <span>+57 312 345 6789</span>
+                </a>
+                <a href="mailto:ventas@managerpro.co" class="contacto-item">
+                    <i class="far fa-envelope" style="color: #5e2b97;"></i>
+                    <span>ventas@managerpro.co</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="mensaje" id="mensaje"></div>
+    </div>
+
+    <script>
+        
+        let hwidActual = '';
+        // URL base del servidor
+        const API_URL = window.location.origin;
+
+    
+        async function cargarHWID() {
+            try {
+                const response = await fetch(API_URL + '/api/hardware-id');
+                const data = await response.json();
+                    // Luego en los fetch:
+                if (data.hardware_id) {
+                    hwidActual = data.hardware_id;
+                    document.getElementById('hwid').innerHTML = hwidActual;
+                    document.getElementById('copyBtn').disabled = false;
+                } else {
+                    document.getElementById('hwid').innerHTML = '❌ Error cargando HWID';
+                }
+            } catch (error) {
+                document.getElementById('hwid').innerHTML = '❌ Error de conexión';
+                console.error('Error:', error);
+            }
+        }
+
+        function copiarHWID() {
+            if (!hwidActual) {
+                mostrarMensaje('error', 'No hay HWID para copiar');
+                return;
+            }
+            
+            navigator.clipboard.writeText(hwidActual).then(() => {
+                mostrarMensaje('exito', '✅ HWID copiado al portapapeles');
+                setTimeout(() => {
+                    document.getElementById('mensaje').style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                mostrarMensaje('error', '❌ Error al copiar');
+            });
+        }
+
+        async function activar() {
+            const licencia = document.getElementById('licencia').value.trim().toUpperCase();
+            
+            if (!licencia) {
+                mostrarMensaje('error', '❌ Ingresa una licencia');
+                return;
+            }
+
+            if (licencia.length !== 20) {
+                mostrarMensaje('error', '❌ La licencia debe tener 20 caracteres');
+                return;
+            }
+
+            const btn = document.getElementById('activarBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Activando...';
+
+            try {
+                const response = await fetch(API_URL + '/api/activar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ licencia })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    mostrarMensaje('exito', '✅ ¡Activación exitosa! El programa se reiniciará...');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    mostrarMensaje('error', '❌ ' + (data.error || 'Error al activar'));
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-circle"></i> ACTIVAR SOFTWARE';
+                }
+            } catch (error) {
+                mostrarMensaje('error', '❌ Error de conexión');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> ACTIVAR SOFTWARE';
+            }
+        }
+        
+        function mostrarMensaje(tipo, texto) {
+            const msg = document.getElementById('mensaje');
+            msg.className = 'mensaje ' + (tipo === 'exito' ? 'exito' : 'error');
+            msg.style.display = 'block';
+            msg.innerHTML = texto;
+        }
+
+        // Cargar HWID al iniciar
+        cargarHWID();
+
+        // Auto mayúsculas en el campo de licencia
+        document.getElementById('licencia').addEventListener('input', function(e) {
+            this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
