@@ -98,7 +98,8 @@ app.post('/api/generar-licencia-para-cliente', (req, res) => {
 });
 
 // ==================== VERIFICACIÓN DE LICENCIA ====================
-const licenciaValida = validarLicencia();
+const forceActivation = process.env.FORCE_ACTIVATION === 'true';
+const licenciaValida = forceActivation ? { valida: false } : validarLicencia();
 
 if (!licenciaValida.valida) {
     console.log('\n╔════════════════════════════════════════════════════╗');
