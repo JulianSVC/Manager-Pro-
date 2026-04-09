@@ -4,13 +4,16 @@ const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
-
+// Railway deploy - forzado 2026-04-08
+const express = require('express');
 const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== BASE DE DATOS ====================
-const db = new sqlite3.Database(path.join(process.cwd(), 'manager.db'));
+// Usar /data para Railway (persistente) o carpeta local para desarrollo
+const dbPath = process.env.RAILWAY_ENV ? '/data/manager.db' : path.join(process.cwd(), 'manager.db');
+const db = new sqlite3.Database(dbPath);
+console.log(`📁 Base de datos en: ${dbPath}`);
 
 db.serialize(() => {
     // Crear tablas
