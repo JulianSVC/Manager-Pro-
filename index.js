@@ -1,22 +1,26 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { exec } = require('child_process');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
-// Railway deploy - forzado 2026-04-08
-const express = require('express');
+
 const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Usar /data para Railway (persistente) o carpeta local para desarrollo
-const dbPath = process.env.RAILWAY_ENV ? '/data/manager.db' : path.join(process.cwd(), 'manager.db');
-const db = new sqlite3.Database(dbPath);
-console.log(`📁 Base de datos en: ${dbPath}`);
+// ==================== BASE DE DATOS ====================
+// Detectar si estamos en Railway (existe el directorio /data)
+const isRailway = fs.existsSync('/data');
 
+// Usar /data para Railway (persistente) o carpeta local para desarrollo
+const dbPath = isRailway ? '/data/manager.db' : path.join(process.cwd(), 'manager.db');
+const db = new sqlite3.Database(dbPath);
+
+console.log(`📁 Base de datos en: ${dbPath}`);
+console.log(`🚀 Modo: ${isRailway ? 'RAILWAY (persistente)' : 'LOCAL'}`);
+
+// Crear tablas
 db.serialize(() => {
-    // Crear tablas
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         user TEXT UNIQUE, 
@@ -58,7 +62,7 @@ db.serialize(() => {
         observacion TEXT
     )`);
     
-    // Agregar columnas de deudas
+    // Agregar columnas de deudas (si no existen)
     db.run(`ALTER TABLE clientes ADD COLUMN total_deuda REAL DEFAULT 0`, (err) => {});
     db.run(`ALTER TABLE clientes ADD COLUMN total_pagado REAL DEFAULT 0`, (err) => {});
     db.run(`ALTER TABLE clientes ADD COLUMN ultima_deuda TEXT`, (err) => {});
