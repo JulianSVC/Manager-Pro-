@@ -1,7 +1,12 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm install"
+    "builder": "DOCKERFILE",
+    "buildCommand": "npm install",
+    "watchPatterns": [
+      "package*.json",
+      "index.js",
+      "public/**"
+    ]
   },
   "deploy": {
     "startCommand": "node index.js",
