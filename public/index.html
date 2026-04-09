@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
+<style>
         /* Mantén todos tus estilos actuales */
         * {
             margin: 0;
@@ -55,6 +55,25 @@
             z-index: 1000;
             box-shadow: var(--shadow);
             border-bottom: 1px solid rgba(0,0,0,0.05);
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--primary-soft);
+        }
+
+        .nav::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .nav::-webkit-scrollbar-track {
+            background: var(--primary-soft);
+            border-radius: 3px;
+        }
+
+        .nav::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
         }
 
         .nav button {
@@ -755,19 +774,309 @@
             font-size: 14px;
         }
 
+        /* ==================== ESTILOS RESPONSIVE COMPLETOS ==================== */
+
+        /* Tablets (pantallas menores a 992px) */
+        @media (max-width: 992px) {
+            .nav {
+                padding: 0 15px;
+                gap: 5px;
+            }
+            
+            .nav button {
+                padding: 12px 15px;
+                font-size: 0.85rem;
+            }
+            
+            .nav button i {
+                font-size: 1rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 15px;
+            }
+            
+            .kpi-card {
+                padding: 15px;
+            }
+            
+            .kpi-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
+            }
+            
+            .kpi-info p {
+                font-size: 22px;
+            }
+            
+            .grid-2 {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 600px;
+            }
+            
+            th, td {
+                padding: 12px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Móviles grandes (pantallas menores a 768px) */
         @media (max-width: 768px) {
+            .nav {
+                padding: 0 10px;
+            }
+            
+            .nav button {
+                padding: 10px 12px;
+                font-size: 0.75rem;
+            }
+            
+            .nav button i {
+                font-size: 0.9rem;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .card {
+                padding: 15px;
+                border-radius: 15px;
+            }
+            
+            .card h2, .card h3 {
+                font-size: 1.2rem;
+                margin-bottom: 15px;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            
+            .kpi-card {
+                padding: 12px;
+                gap: 10px;
+            }
+            
+            .kpi-icon {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+            
+            .kpi-info h3 {
+                font-size: 11px;
+            }
+            
+            .kpi-info p {
+                font-size: 18px;
+            }
+            
+            .btn-main, .btn-add {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
+            
+            .btn-secondary {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            
+            input, select, textarea {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+            
+            .cantidad-control {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .cantidad-btn {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .btn-icon {
+                padding: 8px;
+                font-size: 1rem;
+            }
+            
+            .btn-del {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+            
             .pagination-container {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 10px;
             }
             
             .pagination-controls {
                 justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .pagination-btn {
+                padding: 6px 12px;
+                font-size: 12px;
             }
             
             .pagination-per-page {
                 justify-content: center;
             }
+            
+            .chart-container {
+                height: 250px;
+            }
+        }
+
+        /* Móviles pequeños (pantallas menores a 480px) */
+        @media (max-width: 480px) {
+            .nav {
+                gap: 3px;
+            }
+            
+            .nav button {
+                padding: 8px 10px;
+                font-size: 0.7rem;
+            }
+            
+            .nav button i {
+                margin-right: 3px;
+            }
+            
+            .content {
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 12px;
+                border-radius: 12px;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .kpi-card {
+                padding: 10px;
+            }
+            
+            .kpi-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+            
+            .kpi-info p {
+                font-size: 16px;
+            }
+            
+            .btn-main, .btn-add {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+            }
+            
+            th, td {
+                padding: 8px;
+                font-size: 0.75rem;
+            }
+            
+            .badge {
+                padding: 2px 8px;
+                font-size: 0.7rem;
+            }
+            
+            .stock-input {
+                width: 60px !important;
+            }
+            
+            #modal-pagos .card {
+                width: 95%;
+                max-width: 95%;
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            #ticket-visual, #comprobante-pago {
+                width: 95%;
+                left: 2.5%;
+                right: 2.5%;
+            }
+        }
+
+        /* Ajustes para landscape (teléfonos en horizontal) */
+        @media (max-width: 900px) and (orientation: landscape) {
+            .kpi-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .kpi-card {
+                padding: 8px;
+            }
+            
+            .kpi-icon {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+            
+            .kpi-info p {
+                font-size: 14px;
+            }
+            
+            .chart-container {
+                height: 200px;
+            }
+        }
+
+        /* Mejoras para touch (dispositivos táctiles) */
+        @media (hover: none) and (pointer: coarse) {
+            .btn-main, .btn-add, .btn-secondary, .btn-icon, .btn-del {
+                min-height: 44px;
+            }
+            
+            .pagination-btn {
+                min-height: 40px;
+            }
+            
+            input, select, textarea {
+                font-size: 16px;
+            }
+        }
+
+        /* Mejoras de accesibilidad */
+        :focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -4154,20 +4463,20 @@ function cerrarModalPagos() {
 // Modificar la función showTab existente
 // ==================== FUNCIÓN INICIO ====================
 window.onload = async () => {
-    // Primero verificar si el software está activado
-    try {
-        const res = await fetch(API_URL +'/api/verificar-licencia');
-        const data = await res.json();
+    // // Primero verificar si el software está activado
+    // try {
+    //     const res = await fetch(API_URL +'/api/verificar-licencia');
+    //     const data = await res.json();
         
-        if (!data.valida) {
-            // Si no hay licencia válida, REDIRIGIR a activar.html
-            console.log("🔐 Software no activado, redirigiendo...");
-            window.location.href = '/activar.html';
-            return;
-        }
-    } catch (error) {
-        console.error("Error verificando licencia:", error);
-    }
+    //     if (!data.valida) {
+    //         // Si no hay licencia válida, REDIRIGIR a activar.html
+    //         console.log("🔐 Software no activado, redirigiendo...");
+    //         window.location.href = '/activar.html';
+    //         return;
+    //     }
+    // } catch (error) {
+    //     console.error("Error verificando licencia:", error);
+    // }
 
     // Si llegamos aquí, la licencia es válida, mostrar login normal
     const sesion = sessionStorage.getItem('sesion_activa');
