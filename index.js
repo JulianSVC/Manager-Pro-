@@ -9,16 +9,11 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==================== BASE DE DATOS ====================
-// Detectar si estamos en Railway (existe el directorio /data)
-const isRailway = fs.existsSync('/data');
-
-// Usar /data para Railway (persistente) o carpeta local para desarrollo
-const dbPath = isRailway ? '/data/manager.db' : path.join(process.cwd(), 'manager.db');
+// Usar /data para Railway (volumen persistente)
+const dbPath = '/data/manager.db';
 const db = new sqlite3.Database(dbPath);
 
 console.log(`📁 Base de datos en: ${dbPath}`);
-console.log(`🚀 Modo: ${isRailway ? 'RAILWAY (persistente)' : 'LOCAL'}`);
-
 // Crear tablas
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
