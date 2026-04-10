@@ -2146,6 +2146,8 @@ async function crearCliente() {
             body: JSON.stringify({ nombre: nombreNuevo }) 
         });
 
+        const data = await res.json();
+
         if (res.ok) {
             nombreInput.value = ''; 
             Swal.fire({
@@ -2155,6 +2157,13 @@ async function crearCliente() {
                 showConfirmButton: false
             });
             cargarClientes();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.error || 'No se pudo guardar el cliente.',
+                confirmButtonColor: '#ef476f'
+            });
         }
     } catch (e) {
         Swal.fire({
@@ -2165,7 +2174,6 @@ async function crearCliente() {
         });
     }
 }
-
 async function editarCli(id, nombreActual) {
     const { value: nuevoNombre } = await Swal.fire({
         title: 'Editar cliente',
@@ -2467,7 +2475,6 @@ async function crearProductoConStock() {
         });
     }
 }
-
 async function actualizarStock(id, tipo) {
     const stockInput = document.getElementById(`stock-${id}`);
     const minInput = document.getElementById(`min-${id}`);

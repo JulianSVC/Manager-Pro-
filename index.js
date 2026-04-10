@@ -142,9 +142,17 @@ app.get('/api/clientes', (req, res) => {
 
 app.post('/api/clientes', (req, res) => {
     const { nombre } = req.body;
-    db.run("INSERT INTO clientes (nombre) VALUES (?)", [nombre], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID, nombre });
+    
+    // Verificar si ya existe un cliente con el mismo nombre
+    db.get("SELECT * FROM clientes WHERE nombre = ?", [nombre], (err, row) => {
+        if (row) {
+            return res.status(400).json({ error: "Ya existe un cliente con el mismo nombre" });
+        }
+        
+        db.run("INSERT INTO clientes (nombre) VALUES (?)", [nombre], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID, nombre, message: "Cliente creado exitosamente" });
+        });
     });
 });
 
@@ -204,12 +212,20 @@ app.get('/api/productos', (req, res) => {
 
 app.post('/api/productos', (req, res) => {
     const { nombre, precio, stock, stock_minimo } = req.body;
-    db.run("INSERT INTO productos (nombre, precio_base, stock, stock_minimo) VALUES (?, ?, ?, ?)", 
-        [nombre, precio, stock || 0, stock_minimo || 5], 
-        function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID });
-        });
+    
+    // Verificar si ya existe un producto con el mismo nombre y precio
+    db.get("SELECT * FROM productos WHERE nombre = ? AND precio_base = ?", [nombre, precio], (err, row) => {
+        if (row) {
+            return res.status(400).json({ error: "Ya existe un producto con el mismo nombre y precio" });
+        }
+        
+        db.run("INSERT INTO productos (nombre, precio_base, stock, stock_minimo) VALUES (?, ?, ?, ?)", 
+            [nombre, precio, stock || 0, stock_minimo || 5], 
+            function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ id: this.lastID, message: "Producto creado exitosamente" });
+            });
+    });
 });
 
 app.put('/api/productos/:id', (req, res) => {
