@@ -4508,12 +4508,21 @@ async function verHistorialPagos(clienteId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar el historial' });
     }
 }
-// ==================== GENERAR COMPROBANTE DE PAGO ====================
+// ==================== GENERAR COMPROBANTE DE PAGO (MEJORADO PARA MÓVIL) ====================
 async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, totalPagado) {
     console.log("📄 Generando comprobante para:", nombreCliente);
     
+    // Mostrar loading
+    Swal.fire({
+        title: 'Generando comprobante...',
+        text: 'Por favor espera',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
     try {
-        // Obtener el historial de pagos del cliente
         const res = await fetch(API_URL + `/api/historial-pagos/${clienteId}`);
         const pagos = await res.json();
         
@@ -4536,24 +4545,58 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
         // Generar lista de pagos
         let pagosHTML = '';
         if (pagos.length === 0) {
-            pagosHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px;">No hay pagos registrados</td></tr>';
+            pagosHTML = '<tr><td colspan="3" style="text-align: center; padding: 10px;">No hay pagos registrados</td></tr>';
         } else {
             pagosHTML = pagos.map(p => `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 6px;">${p.fecha_pago}</td>
-                    <td style="padding: 6px; text-align: right; color: #06d6a0; font-weight: bold;">$${p.monto.toLocaleString()}</td>
-                    <td style="padding: 6px;">${p.observacion || '-'}</td>
+                    <td style="padding: 8px 4px; font-size: 10px; word-break: break-word;">${p.fecha_pago}</td>
+                    <td style="padding: 8px 4px; text-align: right; color: #06d6a0; font-weight: bold; font-size: 10px;">$${p.monto.toLocaleString()}</td>
+                    <td style="padding: 8px 4px; font-size: 10px; word-break: break-word;">${p.observacion || '-'}</td>
                 </tr>
             `).join('');
         }
         document.getElementById('comp-pagos-lista').innerHTML = pagosHTML;
         
-        // Generar imagen del comprobante
         const comprobanteDiv = document.getElementById('comprobante-pago');
         
-        // Pequeña pausa para asegurar que el DOM se actualice
+        // Detectar si es móvil
+        const isMobile = window.innerWidth < 768;
+        const scale = isMobile ? 3 : 2;
+        
+        // Guardar estilos originales
+        const originalPosition = comprobanteDiv.style.position;
+        const originalLeft = comprobanteDiv.style.left;
+        
+        // Ajustar para captura en móvil
+        if (isMobile) {
+            comprobanteDiv.style.position = 'fixed';
+            comprobanteDiv.style.left = '0';
+            comprobanteDiv.style.top = '0';
+            comprobanteDiv.style.width = '380px';
+        }
+        
         setTimeout(() => {
-            html2canvas(comprobanteDiv, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+            html2canvas(comprobanteDiv, { 
+                scale: scale,
+                backgroundColor: '#ffffff',
+                logging: false,
+                useCORS: true,
+                windowWidth: comprobanteDiv.scrollWidth,
+                windowHeight: comprobanteDiv.scrollHeight,
+                onclone: (clonedDoc, element) => {
+                    const clonedComp = element;
+                    if (clonedComp) {
+                        clonedComp.style.width = '380px';
+                        clonedComp.style.padding = '20px';
+                    }
+                }
+            }).then(canvas => {
+                // Restaurar estilos originales
+                if (isMobile) {
+                    comprobanteDiv.style.position = originalPosition;
+                    comprobanteDiv.style.left = originalLeft;
+                }
+                
                 const link = document.createElement('a');
                 const nombreArchivo = `Comprobante_${nombreCliente.replace(/\s+/g, '_')}_${fechaStr.replace(/\//g, '-')}.png`;
                 link.download = nombreArchivo;
@@ -4569,6 +4612,11 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
                 });
             }).catch(error => {
                 console.error("Error generando comprobante:", error);
+                // Restaurar estilos en caso de error
+                if (isMobile) {
+                    comprobanteDiv.style.position = originalPosition;
+                    comprobanteDiv.style.left = originalLeft;
+                }
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -4576,7 +4624,7 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
                     confirmButtonColor: '#ef476f'
                 });
             });
-        }, 400);
+        }, 500);
         
     } catch (error) {
         console.error("Error generando comprobante:", error);
