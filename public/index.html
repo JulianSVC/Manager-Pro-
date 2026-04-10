@@ -567,57 +567,7 @@
             font-size: 10px;
             color: #999;
         }
-                /* ==================== ESTILOS RESPONSIVE PARA TICKETS ==================== */
-
-        /* Ticket responsive para móviles */
-        @media (max-width: 480px) {
-            #ticket-visual, #comprobante-pago {
-                width: 95% !important;
-                max-width: 95% !important;
-                left: 2.5% !important;
-                right: 2.5% !important;
-                padding: 15px !important;
-                font-size: 10px !important;
-            }
-            
-            .ticket-header h1, #comprobante-pago h1 {
-                font-size: 18px !important;
-            }
-            
-            .ticket-header .icon-container, 
-            #comprobante-pago .icon-container {
-                width: 40px !important;
-                height: 40px !important;
-                line-height: 40px !important;
-            }
-            
-            .ticket-header .icon-container i,
-            #comprobante-pago .icon-container i {
-                font-size: 20px !important;
-            }
-            
-            .ticket-info, .comp-pagos-table {
-                font-size: 10px !important;
-            }
-            
-            .ticket-table th, .ticket-table td,
-            .comp-pagos-table th, .comp-pagos-table td {
-                padding: 4px !important;
-                font-size: 9px !important;
-            }
-            
-            .total-row {
-                font-size: 14px !important;
-            }
-            
-            .thanks-message {
-                font-size: 10px !important;
-            }
-            
-            .ticket-footer p, .comp-pagos-table p {
-                font-size: 8px !important;
-            }
-        }
+        
         .badge {
             background: var(--primary);
             color: white;
@@ -1128,29 +1078,6 @@
             opacity: 0.6;
             pointer-events: none;
         }
-    /* Mejoras adicionales para ticket en móvil */
-    @media (max-width: 480px) {
-        #ticket-visual, #comprobante-pago {
-            width: 380px !important;
-            min-width: 380px !important;
-            padding: 15px !important;
-            box-sizing: border-box !important;
-        }
-        
-        .ticket-table td, .ticket-table th {
-            word-break: break-word !important;
-            white-space: normal !important;
-        }
-        
-        .ticket-table {
-            table-layout: fixed !important;
-        }
-        
-        .ticket-table td:first-child,
-        .ticket-table th:first-child {
-            width: 40% !important;
-        }
-    }
     </style>
 </head>
 <body>
@@ -3517,19 +3444,9 @@ async function actualizarVenta(id) {
         });
     }
 }
-// ==================== FUNCIÓN GENERAR TICKET CORREGIDA PARA MÓVIL ====================
+// ==================== FUNCIÓN GENERAR TICKET CORREGIDA ====================
 async function generarTicketVenta(id) {
     console.log("🎫 Generando ticket para venta ID:", id);
-    
-    // Mostrar loading
-    Swal.fire({
-        title: 'Generando ticket...',
-        text: 'Por favor espera',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
     
     try {
         const venta = historialCompleto.find(v => v.id == id);
@@ -3547,15 +3464,15 @@ async function generarTicketVenta(id) {
         // Obtener los detalles de la venta del backend
         let detalles = [];
         try {
-            const res = await fetch(API_URL + `/api/ventas/${id}/detalles`);
+            const res = await fetch(API_URL +`/api/ventas/${id}/detalles`);
             if (res.ok) {
                 detalles = await res.json();
+                console.log("📦 Detalles de la venta:", detalles);
             }
         } catch (e) {
-            console.log("No se pudieron obtener detalles");
+            console.log("No se pudieron obtener detalles, usando datos del historial");
         }
         
-        // Llenar datos del ticket
         document.getElementById('t-folio').innerText = `#${venta.id}`;
         document.getElementById('t-folio-footer').innerText = venta.id;
         document.getElementById('t-fecha').innerText = venta.fecha;
@@ -3563,29 +3480,31 @@ async function generarTicketVenta(id) {
         document.getElementById('t-cliente-nombre').innerText = venta.cliente;
         document.getElementById('t-total').innerText = `$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}`;
         
-        // Generar los items del ticket
+        // Generar los items del ticket con los productos reales
         let itemsHTML = '';
         
         if (detalles && detalles.length > 0) {
+            // Si hay detalles, mostrar cada producto
             detalles.forEach(item => {
                 const subtotal = item.cantidad * item.precio_final;
                 itemsHTML += `
                 <tr>
-                    <td style="padding: 8px 4px; font-size: 11px; word-break: break-word;">${item.nombre}</td>
-                    <td style="padding: 8px 4px; text-align: center; font-size: 11px;">${item.cantidad}</td>
-                    <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${item.precio_final.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                    <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${subtotal.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                    <td>${item.nombre}</td>
+                    <td align="center">${item.cantidad}</td>
+                    <td align="right">$${item.precio_final.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                    <td align="right">$${subtotal.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
                 </tr>
                 `;
             });
         } else {
+            // Si no hay detalles, mostrar un item genérico con los datos del historial
             const precioUnitario = (venta.total || 0) / (venta.items || 1);
             itemsHTML = `
             <tr>
-                <td style="padding: 8px 4px; font-size: 11px;">Producto (${venta.items} items)</td>
-                <td style="padding: 8px 4px; text-align: center; font-size: 11px;">${venta.items || 1}</td>
-                <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${precioUnitario.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                <td>Producto (${venta.items} items)</td>
+                <td align="center">${venta.items || 1}</td>
+                <td align="right">$${precioUnitario.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                <td align="right">$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
             </tr>
             `;
         }
@@ -3594,68 +3513,22 @@ async function generarTicketVenta(id) {
 
         const ticketDiv = document.getElementById('ticket-visual');
         
-        // Calcular el ancho real del ticket
-        const ticketWidth = ticketDiv.offsetWidth;
-        const isMobile = window.innerWidth < 768;
-        
-        // Para móvil, aumentar la escala para mejor calidad
-        const scale = isMobile ? 3 : 2;
-        
-        // Asegurar que el ticket tenga el ancho correcto antes de capturar
-        const originalWidth = ticketDiv.style.width;
-        if (isMobile) {
-            ticketDiv.style.width = '380px';
-            ticketDiv.style.left = '0';
-            ticketDiv.style.position = 'fixed';
-            ticketDiv.style.top = '0';
-        }
-        
         setTimeout(() => {
-            html2canvas(ticketDiv, { 
-                scale: scale,
-                backgroundColor: '#ffffff',
-                logging: false,
-                useCORS: true,
-                windowWidth: ticketDiv.scrollWidth,
-                windowHeight: ticketDiv.scrollHeight,
-                onclone: (clonedDoc, element) => {
-                    // Asegurar que el clon tenga los mismos estilos
-                    const clonedTicket = element;
-                    if (clonedTicket) {
-                        clonedTicket.style.width = '380px';
-                        clonedTicket.style.padding = '20px';
-                    }
-                }
-            }).then(canvas => {
-                // Restaurar estilos originales
-                if (isMobile) {
-                    ticketDiv.style.width = originalWidth;
-                    ticketDiv.style.left = '-9999px';
-                    ticketDiv.style.position = 'absolute';
-                }
-                
-                // Crear enlace de descarga
+            html2canvas(ticketDiv, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
                 const link = document.createElement('a');
-                const nombreArchivo = `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${venta.id}.png`;
-                link.download = nombreArchivo;
+                link.download = `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${venta.id}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
-                
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Ticket generado',
                     text: `Ticket para ${venta.cliente} descargado`,
-                    timer: 2000,
+                    timer: 1500,
                     showConfirmButton: false
                 });
             }).catch(error => {
                 console.error("Error generando imagen:", error);
-                // Restaurar estilos en caso de error
-                if (isMobile) {
-                    ticketDiv.style.width = originalWidth;
-                    ticketDiv.style.left = '-9999px';
-                    ticketDiv.style.position = 'absolute';
-                }
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -3663,7 +3536,7 @@ async function generarTicketVenta(id) {
                     confirmButtonColor: '#ef476f'
                 });
             });
-        }, 500);
+        }, 400);
         
     } catch (error) {
         console.error("Error generando ticket:", error);
@@ -3675,6 +3548,7 @@ async function generarTicketVenta(id) {
         });
     }
 }
+
 // ==================== FUNCIÓN ACTUALIZAR DASHBOARD CORREGIDA ====================
 function actualizarDashboard(datos) {
     console.log("📊 actualizarDashboard recibió:", datos?.length || 0, "registros");
@@ -4508,21 +4382,12 @@ async function verHistorialPagos(clienteId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar el historial' });
     }
 }
-// ==================== GENERAR COMPROBANTE DE PAGO (MEJORADO PARA MÓVIL) ====================
+// ==================== GENERAR COMPROBANTE DE PAGO ====================
 async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, totalPagado) {
     console.log("📄 Generando comprobante para:", nombreCliente);
     
-    // Mostrar loading
-    Swal.fire({
-        title: 'Generando comprobante...',
-        text: 'Por favor espera',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
     try {
+        // Obtener el historial de pagos del cliente
         const res = await fetch(API_URL + `/api/historial-pagos/${clienteId}`);
         const pagos = await res.json();
         
@@ -4545,58 +4410,24 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
         // Generar lista de pagos
         let pagosHTML = '';
         if (pagos.length === 0) {
-            pagosHTML = '<tr><td colspan="3" style="text-align: center; padding: 10px;">No hay pagos registrados</td></tr>';
+            pagosHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px;">No hay pagos registrados</td></tr>';
         } else {
             pagosHTML = pagos.map(p => `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px 4px; font-size: 10px; word-break: break-word;">${p.fecha_pago}</td>
-                    <td style="padding: 8px 4px; text-align: right; color: #06d6a0; font-weight: bold; font-size: 10px;">$${p.monto.toLocaleString()}</td>
-                    <td style="padding: 8px 4px; font-size: 10px; word-break: break-word;">${p.observacion || '-'}</td>
+                    <td style="padding: 6px;">${p.fecha_pago}</td>
+                    <td style="padding: 6px; text-align: right; color: #06d6a0; font-weight: bold;">$${p.monto.toLocaleString()}</td>
+                    <td style="padding: 6px;">${p.observacion || '-'}</td>
                 </tr>
             `).join('');
         }
         document.getElementById('comp-pagos-lista').innerHTML = pagosHTML;
         
+        // Generar imagen del comprobante
         const comprobanteDiv = document.getElementById('comprobante-pago');
         
-        // Detectar si es móvil
-        const isMobile = window.innerWidth < 768;
-        const scale = isMobile ? 3 : 2;
-        
-        // Guardar estilos originales
-        const originalPosition = comprobanteDiv.style.position;
-        const originalLeft = comprobanteDiv.style.left;
-        
-        // Ajustar para captura en móvil
-        if (isMobile) {
-            comprobanteDiv.style.position = 'fixed';
-            comprobanteDiv.style.left = '0';
-            comprobanteDiv.style.top = '0';
-            comprobanteDiv.style.width = '380px';
-        }
-        
+        // Pequeña pausa para asegurar que el DOM se actualice
         setTimeout(() => {
-            html2canvas(comprobanteDiv, { 
-                scale: scale,
-                backgroundColor: '#ffffff',
-                logging: false,
-                useCORS: true,
-                windowWidth: comprobanteDiv.scrollWidth,
-                windowHeight: comprobanteDiv.scrollHeight,
-                onclone: (clonedDoc, element) => {
-                    const clonedComp = element;
-                    if (clonedComp) {
-                        clonedComp.style.width = '380px';
-                        clonedComp.style.padding = '20px';
-                    }
-                }
-            }).then(canvas => {
-                // Restaurar estilos originales
-                if (isMobile) {
-                    comprobanteDiv.style.position = originalPosition;
-                    comprobanteDiv.style.left = originalLeft;
-                }
-                
+            html2canvas(comprobanteDiv, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
                 const link = document.createElement('a');
                 const nombreArchivo = `Comprobante_${nombreCliente.replace(/\s+/g, '_')}_${fechaStr.replace(/\//g, '-')}.png`;
                 link.download = nombreArchivo;
@@ -4612,11 +4443,6 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
                 });
             }).catch(error => {
                 console.error("Error generando comprobante:", error);
-                // Restaurar estilos en caso de error
-                if (isMobile) {
-                    comprobanteDiv.style.position = originalPosition;
-                    comprobanteDiv.style.left = originalLeft;
-                }
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -4624,7 +4450,7 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
                     confirmButtonColor: '#ef476f'
                 });
             });
-        }, 500);
+        }, 400);
         
     } catch (error) {
         console.error("Error generando comprobante:", error);
