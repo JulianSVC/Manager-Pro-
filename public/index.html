@@ -567,7 +567,57 @@
             font-size: 10px;
             color: #999;
         }
+                /* ==================== ESTILOS RESPONSIVE PARA TICKETS ==================== */
 
+        /* Ticket responsive para móviles */
+        @media (max-width: 480px) {
+            #ticket-visual, #comprobante-pago {
+                width: 95% !important;
+                max-width: 95% !important;
+                left: 2.5% !important;
+                right: 2.5% !important;
+                padding: 15px !important;
+                font-size: 10px !important;
+            }
+            
+            .ticket-header h1, #comprobante-pago h1 {
+                font-size: 18px !important;
+            }
+            
+            .ticket-header .icon-container, 
+            #comprobante-pago .icon-container {
+                width: 40px !important;
+                height: 40px !important;
+                line-height: 40px !important;
+            }
+            
+            .ticket-header .icon-container i,
+            #comprobante-pago .icon-container i {
+                font-size: 20px !important;
+            }
+            
+            .ticket-info, .comp-pagos-table {
+                font-size: 10px !important;
+            }
+            
+            .ticket-table th, .ticket-table td,
+            .comp-pagos-table th, .comp-pagos-table td {
+                padding: 4px !important;
+                font-size: 9px !important;
+            }
+            
+            .total-row {
+                font-size: 14px !important;
+            }
+            
+            .thanks-message {
+                font-size: 10px !important;
+            }
+            
+            .ticket-footer p, .comp-pagos-table p {
+                font-size: 8px !important;
+            }
+        }
         .badge {
             background: var(--primary);
             color: white;
