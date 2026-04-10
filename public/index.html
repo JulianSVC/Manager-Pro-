@@ -1128,6 +1128,29 @@
             opacity: 0.6;
             pointer-events: none;
         }
+    /* Mejoras adicionales para ticket en móvil */
+    @media (max-width: 480px) {
+        #ticket-visual, #comprobante-pago {
+            width: 380px !important;
+            min-width: 380px !important;
+            padding: 15px !important;
+            box-sizing: border-box !important;
+        }
+        
+        .ticket-table td, .ticket-table th {
+            word-break: break-word !important;
+            white-space: normal !important;
+        }
+        
+        .ticket-table {
+            table-layout: fixed !important;
+        }
+        
+        .ticket-table td:first-child,
+        .ticket-table th:first-child {
+            width: 40% !important;
+        }
+    }
     </style>
 </head>
 <body>
@@ -3494,9 +3517,19 @@ async function actualizarVenta(id) {
         });
     }
 }
-// ==================== FUNCIÓN GENERAR TICKET CORREGIDA ====================
+// ==================== FUNCIÓN GENERAR TICKET CORREGIDA PARA MÓVIL ====================
 async function generarTicketVenta(id) {
     console.log("🎫 Generando ticket para venta ID:", id);
+    
+    // Mostrar loading
+    Swal.fire({
+        title: 'Generando ticket...',
+        text: 'Por favor espera',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     try {
         const venta = historialCompleto.find(v => v.id == id);
@@ -3514,15 +3547,15 @@ async function generarTicketVenta(id) {
         // Obtener los detalles de la venta del backend
         let detalles = [];
         try {
-            const res = await fetch(API_URL +`/api/ventas/${id}/detalles`);
+            const res = await fetch(API_URL + `/api/ventas/${id}/detalles`);
             if (res.ok) {
                 detalles = await res.json();
-                console.log("📦 Detalles de la venta:", detalles);
             }
         } catch (e) {
-            console.log("No se pudieron obtener detalles, usando datos del historial");
+            console.log("No se pudieron obtener detalles");
         }
         
+        // Llenar datos del ticket
         document.getElementById('t-folio').innerText = `#${venta.id}`;
         document.getElementById('t-folio-footer').innerText = venta.id;
         document.getElementById('t-fecha').innerText = venta.fecha;
@@ -3530,31 +3563,29 @@ async function generarTicketVenta(id) {
         document.getElementById('t-cliente-nombre').innerText = venta.cliente;
         document.getElementById('t-total').innerText = `$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}`;
         
-        // Generar los items del ticket con los productos reales
+        // Generar los items del ticket
         let itemsHTML = '';
         
         if (detalles && detalles.length > 0) {
-            // Si hay detalles, mostrar cada producto
             detalles.forEach(item => {
                 const subtotal = item.cantidad * item.precio_final;
                 itemsHTML += `
                 <tr>
-                    <td>${item.nombre}</td>
-                    <td align="center">${item.cantidad}</td>
-                    <td align="right">$${item.precio_final.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                    <td align="right">$${subtotal.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                    <td style="padding: 8px 4px; font-size: 11px; word-break: break-word;">${item.nombre}</td>
+                    <td style="padding: 8px 4px; text-align: center; font-size: 11px;">${item.cantidad}</td>
+                    <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${item.precio_final.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                    <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${subtotal.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
                 </tr>
                 `;
             });
         } else {
-            // Si no hay detalles, mostrar un item genérico con los datos del historial
             const precioUnitario = (venta.total || 0) / (venta.items || 1);
             itemsHTML = `
             <tr>
-                <td>Producto (${venta.items} items)</td>
-                <td align="center">${venta.items || 1}</td>
-                <td align="right">$${precioUnitario.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                <td align="right">$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 8px 4px; font-size: 11px;">Producto (${venta.items} items)</td>
+                <td style="padding: 8px 4px; text-align: center; font-size: 11px;">${venta.items || 1}</td>
+                <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${precioUnitario.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 8px 4px; text-align: right; font-size: 11px;">$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
             </tr>
             `;
         }
@@ -3563,22 +3594,68 @@ async function generarTicketVenta(id) {
 
         const ticketDiv = document.getElementById('ticket-visual');
         
+        // Calcular el ancho real del ticket
+        const ticketWidth = ticketDiv.offsetWidth;
+        const isMobile = window.innerWidth < 768;
+        
+        // Para móvil, aumentar la escala para mejor calidad
+        const scale = isMobile ? 3 : 2;
+        
+        // Asegurar que el ticket tenga el ancho correcto antes de capturar
+        const originalWidth = ticketDiv.style.width;
+        if (isMobile) {
+            ticketDiv.style.width = '380px';
+            ticketDiv.style.left = '0';
+            ticketDiv.style.position = 'fixed';
+            ticketDiv.style.top = '0';
+        }
+        
         setTimeout(() => {
-            html2canvas(ticketDiv, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+            html2canvas(ticketDiv, { 
+                scale: scale,
+                backgroundColor: '#ffffff',
+                logging: false,
+                useCORS: true,
+                windowWidth: ticketDiv.scrollWidth,
+                windowHeight: ticketDiv.scrollHeight,
+                onclone: (clonedDoc, element) => {
+                    // Asegurar que el clon tenga los mismos estilos
+                    const clonedTicket = element;
+                    if (clonedTicket) {
+                        clonedTicket.style.width = '380px';
+                        clonedTicket.style.padding = '20px';
+                    }
+                }
+            }).then(canvas => {
+                // Restaurar estilos originales
+                if (isMobile) {
+                    ticketDiv.style.width = originalWidth;
+                    ticketDiv.style.left = '-9999px';
+                    ticketDiv.style.position = 'absolute';
+                }
+                
+                // Crear enlace de descarga
                 const link = document.createElement('a');
-                link.download = `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${venta.id}.png`;
+                const nombreArchivo = `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${venta.id}.png`;
+                link.download = nombreArchivo;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
-
+                
                 Swal.fire({
                     icon: 'success',
                     title: 'Ticket generado',
                     text: `Ticket para ${venta.cliente} descargado`,
-                    timer: 1500,
+                    timer: 2000,
                     showConfirmButton: false
                 });
             }).catch(error => {
                 console.error("Error generando imagen:", error);
+                // Restaurar estilos en caso de error
+                if (isMobile) {
+                    ticketDiv.style.width = originalWidth;
+                    ticketDiv.style.left = '-9999px';
+                    ticketDiv.style.position = 'absolute';
+                }
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -3586,7 +3663,7 @@ async function generarTicketVenta(id) {
                     confirmButtonColor: '#ef476f'
                 });
             });
-        }, 400);
+        }, 500);
         
     } catch (error) {
         console.error("Error generando ticket:", error);
@@ -3598,7 +3675,6 @@ async function generarTicketVenta(id) {
         });
     }
 }
-
 // ==================== FUNCIÓN ACTUALIZAR DASHBOARD CORREGIDA ====================
 function actualizarDashboard(datos) {
     console.log("📊 actualizarDashboard recibió:", datos?.length || 0, "registros");
