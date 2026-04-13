@@ -1078,6 +1078,126 @@
             opacity: 0.6;
             pointer-events: none;
         }
+                /* ==================== ESTILOS MEJORADOS PARA TICKET Y COMPROBANTE ==================== */
+
+        /* Tamaño base del ticket reducido */
+        #ticket-visual, #comprobante-pago {
+            width: 320px !important;
+            padding: 12px !important;
+            font-size: 10px !important;
+        }
+
+        .ticket-header h1, #comprobante-pago h1 {
+            font-size: 16px !important;
+            letter-spacing: 1px !important;
+        }
+
+        .ticket-header .icon-container, 
+        #comprobante-pago .icon-container {
+            width: 35px !important;
+            height: 35px !important;
+            line-height: 35px !important;
+            margin-bottom: 5px !important;
+        }
+
+        .ticket-header .icon-container i,
+        #comprobante-pago .icon-container i {
+            font-size: 16px !important;
+        }
+
+        .ticket-info, .comp-pagos-table {
+            padding: 8px !important;
+            font-size: 9px !important;
+        }
+
+        .ticket-info p, .comp-pagos-table p {
+            font-size: 9px !important;
+            margin: 3px 0 !important;
+        }
+
+        /* Tabla del ticket compacta */
+        .ticket-table, .comp-pagos-table {
+            width: 100% !important;
+            font-size: 9px !important;
+        }
+
+        .ticket-table th, .ticket-table td,
+        .comp-pagos-table th, .comp-pagos-table td {
+            padding: 4px 2px !important;
+            font-size: 8px !important;
+        }
+
+        /* Ajustar columnas de la tabla */
+        .ticket-table th:first-child, .ticket-table td:first-child {
+            width: 35% !important;
+        }
+
+        .ticket-table th:nth-child(2), .ticket-table td:nth-child(2) {
+            width: 15% !important;
+            text-align: center !important;
+        }
+
+        .ticket-table th:nth-child(3), .ticket-table td:nth-child(3),
+        .ticket-table th:nth-child(4), .ticket-table td:nth-child(4) {
+            width: 25% !important;
+            text-align: right !important;
+        }
+
+        .total-row {
+            font-size: 12px !important;
+        }
+
+        .thanks-message {
+            font-size: 8px !important;
+        }
+
+        .ticket-footer p, .comp-pagos-table p {
+            font-size: 7px !important;
+        }
+
+        .folio-badge {
+            font-size: 9px !important;
+            padding: 1px 6px !important;
+        }
+
+        /* Responsive para móvil */
+        @media (max-width: 480px) {
+            #ticket-visual, #comprobante-pago {
+                width: 300px !important;
+                padding: 10px !important;
+            }
+            
+            .ticket-table th, .ticket-table td,
+            .comp-pagos-table th, .comp-pagos-table td {
+                padding: 3px 1px !important;
+                font-size: 7px !important;
+            }
+            
+            .ticket-table th:first-child, .ticket-table td:first-child {
+                width: 40% !important;
+            }
+            
+            .total-row {
+                font-size: 10px !important;
+            }
+        }
+
+        /* Mejora del scroll horizontal solo cuando sea necesario */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Mejorar visualización de tablas en desktop */
+        @media (min-width: 769px) {
+            .table-container {
+                overflow-x: visible;
+            }
+            
+            table {
+                min-width: auto;
+            }
+        }
     </style>
 </head>
 <body>
@@ -3444,111 +3564,106 @@ async function actualizarVenta(id) {
         });
     }
 }
-// ==================== FUNCIÓN GENERAR TICKET CORREGIDA ====================
+// ==================== FUNCIÓN GENERAR TICKET CORREGIDA Y OPTIMIZADA ====================
 async function generarTicketVenta(id) {
     console.log("🎫 Generando ticket para venta ID:", id);
+    
+    Swal.fire({
+        title: 'Generando ticket...',
+        text: 'Por favor espera',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     try {
         const venta = historialCompleto.find(v => v.id == id);
         
         if (!venta) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'No se encontró la venta',
-                confirmButtonColor: '#ef476f'
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: 'No se encontró la venta' });
             return;
         }
         
-        // Obtener los detalles de la venta del backend
         let detalles = [];
         try {
-            const res = await fetch(API_URL +`/api/ventas/${id}/detalles`);
-            if (res.ok) {
-                detalles = await res.json();
-                console.log("📦 Detalles de la venta:", detalles);
-            }
-        } catch (e) {
-            console.log("No se pudieron obtener detalles, usando datos del historial");
-        }
+            const res = await fetch(API_URL + `/api/ventas/${id}/detalles`);
+            if (res.ok) detalles = await res.json();
+        } catch (e) {}
         
         document.getElementById('t-folio').innerText = `#${venta.id}`;
         document.getElementById('t-folio-footer').innerText = venta.id;
         document.getElementById('t-fecha').innerText = venta.fecha;
         document.getElementById('t-cliente').innerText = venta.cliente.toUpperCase();
         document.getElementById('t-cliente-nombre').innerText = venta.cliente;
-        document.getElementById('t-total').innerText = `$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}`;
+        document.getElementById('t-total').innerText = `$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 0})}`;
         
-        // Generar los items del ticket con los productos reales
         let itemsHTML = '';
-        
         if (detalles && detalles.length > 0) {
-            // Si hay detalles, mostrar cada producto
             detalles.forEach(item => {
                 const subtotal = item.cantidad * item.precio_final;
                 itemsHTML += `
                 <tr>
-                    <td>${item.nombre}</td>
-                    <td align="center">${item.cantidad}</td>
-                    <td align="right">$${item.precio_final.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                    <td align="right">$${subtotal.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                </tr>
-                `;
+                    <td style="padding: 4px 2px; font-size: 9px; word-break: break-word;">${item.nombre.substring(0, 20)}${item.nombre.length > 20 ? '...' : ''}</td>
+                    <td style="padding: 4px 2px; text-align: center; font-size: 9px;">${item.cantidad}</td>
+                    <td style="padding: 4px 2px; text-align: right; font-size: 9px;">$${Math.round(item.precio_final).toLocaleString()}</td>
+                    <td style="padding: 4px 2px; text-align: right; font-size: 9px;">$${Math.round(subtotal).toLocaleString()}</td>
+                </tr>`;
             });
         } else {
-            // Si no hay detalles, mostrar un item genérico con los datos del historial
             const precioUnitario = (venta.total || 0) / (venta.items || 1);
-            itemsHTML = `
-            <tr>
-                <td>Producto (${venta.items} items)</td>
-                <td align="center">${venta.items || 1}</td>
-                <td align="right">$${precioUnitario.toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-                <td align="right">$${(venta.total || 0).toLocaleString('es-CO', {minimumFractionDigits: 2})}</td>
-            </tr>
-            `;
+            itemsHTML = `<tr>
+                <td style="padding: 4px 2px; font-size: 9px;">Productos</td>
+                <td style="padding: 4px 2px; text-align: center; font-size: 9px;">${venta.items || 1}</td>
+                <td style="padding: 4px 2px; text-align: right; font-size: 9px;">$${Math.round(precioUnitario).toLocaleString()}</td>
+                <td style="padding: 4px 2px; text-align: right; font-size: 9px;">$${Math.round(venta.total || 0).toLocaleString()}</td>
+            </tr>`;
         }
-        
         document.getElementById('t-items').innerHTML = itemsHTML;
 
         const ticketDiv = document.getElementById('ticket-visual');
+        const isMobile = window.innerWidth < 768;
+        const originalPosition = ticketDiv.style.position;
+        const originalLeft = ticketDiv.style.left;
+        
+        if (isMobile) {
+            ticketDiv.style.position = 'fixed';
+            ticketDiv.style.left = '0';
+            ticketDiv.style.top = '0';
+            ticketDiv.style.width = '300px';
+        }
         
         setTimeout(() => {
-            html2canvas(ticketDiv, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+            html2canvas(ticketDiv, { 
+                scale: isMobile ? 2.5 : 2,
+                backgroundColor: '#ffffff',
+                logging: false,
+                useCORS: true
+            }).then(canvas => {
+                if (isMobile) {
+                    ticketDiv.style.position = originalPosition;
+                    ticketDiv.style.left = originalLeft;
+                }
+                
                 const link = document.createElement('a');
                 link.download = `Ticket_${venta.cliente.replace(/\s+/g, '_')}_${venta.id}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Ticket generado',
-                    text: `Ticket para ${venta.cliente} descargado`,
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                
+                Swal.fire({ icon: 'success', title: 'Ticket generado', text: `Ticket para ${venta.cliente} descargado`, timer: 1500, showConfirmButton: false });
             }).catch(error => {
-                console.error("Error generando imagen:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo generar la imagen del ticket',
-                    confirmButtonColor: '#ef476f'
-                });
+                if (isMobile) {
+                    ticketDiv.style.position = originalPosition;
+                    ticketDiv.style.left = originalLeft;
+                }
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el ticket' });
             });
-        }, 400);
+        }, 300);
         
     } catch (error) {
-        console.error("Error generando ticket:", error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo generar el ticket',
-            confirmButtonColor: '#ef476f'
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el ticket' });
     }
 }
-
 // ==================== FUNCIÓN ACTUALIZAR DASHBOARD CORREGIDA ====================
 function actualizarDashboard(datos) {
     console.log("📊 actualizarDashboard recibió:", datos?.length || 0, "registros");
@@ -4382,12 +4497,13 @@ async function verHistorialPagos(clienteId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar el historial' });
     }
 }
-// ==================== GENERAR COMPROBANTE DE PAGO ====================
+// ==================== GENERAR COMPROBANTE DE PAGO OPTIMIZADO ====================
 async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, totalPagado) {
     console.log("📄 Generando comprobante para:", nombreCliente);
     
+    Swal.fire({ title: 'Generando comprobante...', text: 'Por favor espera', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+    
     try {
-        // Obtener el historial de pagos del cliente
         const res = await fetch(API_URL + `/api/historial-pagos/${clienteId}`);
         const pagos = await res.json();
         
@@ -4396,70 +4512,63 @@ async function generarComprobantePago(clienteId, nombreCliente, totalDeuda, tota
         const fechaColombia = new Date(fechaActual.getTime() - (5 * 60 * 60 * 1000));
         const fechaStr = `${fechaColombia.getDate().toString().padStart(2, '0')}/${(fechaColombia.getMonth() + 1).toString().padStart(2, '0')}/${fechaColombia.getFullYear()}`;
         const horaStr = `${fechaColombia.getHours().toString().padStart(2, '0')}:${fechaColombia.getMinutes().toString().padStart(2, '0')}`;
-        
         const numeroComprobante = `CP-${fechaColombia.getFullYear()}${(fechaColombia.getMonth() + 1).toString().padStart(2, '0')}${fechaColombia.getDate().toString().padStart(2, '0')}-${clienteId}`;
         
-        // Llenar datos del comprobante
         document.getElementById('comp-cliente').innerText = nombreCliente.toUpperCase();
         document.getElementById('comp-fecha').innerText = `${fechaStr} - ${horaStr}`;
         document.getElementById('comp-numero').innerText = numeroComprobante;
-        document.getElementById('comp-total-deuda').innerHTML = `$${totalDeuda.toLocaleString()}`;
-        document.getElementById('comp-total-pagado').innerHTML = `$${totalPagado.toLocaleString()}`;
-        document.getElementById('comp-saldo').innerHTML = `$${saldoPendiente.toLocaleString()}`;
+        document.getElementById('comp-total-deuda').innerHTML = `$${Math.round(totalDeuda).toLocaleString()}`;
+        document.getElementById('comp-total-pagado').innerHTML = `$${Math.round(totalPagado).toLocaleString()}`;
+        document.getElementById('comp-saldo').innerHTML = `$${Math.round(saldoPendiente).toLocaleString()}`;
         
-        // Generar lista de pagos
         let pagosHTML = '';
         if (pagos.length === 0) {
-            pagosHTML = '<tr><td colspan="3" style="text-align: center; padding: 15px;">No hay pagos registrados</td></tr>';
+            pagosHTML = '<tr><td colspan="3" style="text-align: center; padding: 8px;">No hay pagos registrados</td></tr>';
         } else {
-            pagosHTML = pagos.map(p => `
+            pagosHTML = pagos.slice(0, 5).map(p => `
                 <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 6px;">${p.fecha_pago}</td>
-                    <td style="padding: 6px; text-align: right; color: #06d6a0; font-weight: bold;">$${p.monto.toLocaleString()}</td>
-                    <td style="padding: 6px;">${p.observacion || '-'}</td>
+                    <td style="padding: 4px; font-size: 8px;">${p.fecha_pago}</td>
+                    <td style="padding: 4px; text-align: right; color: #06d6a0; font-size: 8px;">$${Math.round(p.monto).toLocaleString()}</td>
+                    <td style="padding: 4px; font-size: 8px;">${p.observacion?.substring(0, 15) || '-'}</td>
                 </tr>
             `).join('');
         }
         document.getElementById('comp-pagos-lista').innerHTML = pagosHTML;
         
-        // Generar imagen del comprobante
         const comprobanteDiv = document.getElementById('comprobante-pago');
+        const isMobile = window.innerWidth < 768;
+        const originalPosition = comprobanteDiv.style.position;
+        const originalLeft = comprobanteDiv.style.left;
         
-        // Pequeña pausa para asegurar que el DOM se actualice
+        if (isMobile) {
+            comprobanteDiv.style.position = 'fixed';
+            comprobanteDiv.style.left = '0';
+            comprobanteDiv.style.top = '0';
+            comprobanteDiv.style.width = '300px';
+        }
+        
         setTimeout(() => {
-            html2canvas(comprobanteDiv, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+            html2canvas(comprobanteDiv, { scale: isMobile ? 2.5 : 2, backgroundColor: '#ffffff', logging: false }).then(canvas => {
+                if (isMobile) {
+                    comprobanteDiv.style.position = originalPosition;
+                    comprobanteDiv.style.left = originalLeft;
+                }
                 const link = document.createElement('a');
-                const nombreArchivo = `Comprobante_${nombreCliente.replace(/\s+/g, '_')}_${fechaStr.replace(/\//g, '-')}.png`;
-                link.download = nombreArchivo;
+                link.download = `Comprobante_${nombreCliente.replace(/\s+/g, '_')}_${fechaStr.replace(/\//g, '-')}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Comprobante generado',
-                    text: `Comprobante para ${nombreCliente} descargado`,
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                Swal.fire({ icon: 'success', title: 'Comprobante generado', text: `Comprobante para ${nombreCliente} descargado`, timer: 1500, showConfirmButton: false });
             }).catch(error => {
-                console.error("Error generando comprobante:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo generar el comprobante',
-                    confirmButtonColor: '#ef476f'
-                });
+                if (isMobile) {
+                    comprobanteDiv.style.position = originalPosition;
+                    comprobanteDiv.style.left = originalLeft;
+                }
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el comprobante' });
             });
-        }, 400);
+        }, 300);
         
     } catch (error) {
-        console.error("Error generando comprobante:", error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'No se pudo generar el comprobante',
-            confirmButtonColor: '#ef476f'
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el comprobante' });
     }
 }
 function cerrarModalPagos() {
